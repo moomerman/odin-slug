@@ -1,6 +1,5 @@
 package slug
 
-import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:strconv"
@@ -31,7 +30,6 @@ svg_icon_destroy :: proc(icon: ^SVG_Icon) {
 svg_load_icon :: proc(path: string) -> (icon: SVG_Icon, ok: bool) {
 	data, read_err := os.read_entire_file(path, context.allocator)
 	if read_err != nil {
-		fmt.eprintln("Failed to read SVG file:", path)
 		return {}, false
 	}
 	defer delete(data)
@@ -50,14 +48,12 @@ svg_parse :: proc(svg_data: string) -> (icon: SVG_Icon, ok: bool) {
 
 	path_d := svg_extract_path_d(svg_data)
 	if len(path_d) == 0 {
-		fmt.eprintln("SVG: no path d attribute found")
 		return {}, false
 	}
 
 	svg_parse_path_data(path_d, vb_x, vb_y, vb_w, vb_h, &icon.glyph)
 
 	if len(icon.glyph.curves) == 0 {
-		fmt.eprintln("SVG: no curves parsed from path data")
 		return {}, false
 	}
 
@@ -69,23 +65,13 @@ svg_parse :: proc(svg_data: string) -> (icon: SVG_Icon, ok: bool) {
 
 	glyph_process(&icon.glyph)
 
-	fmt.printf(
-		"SVG loaded: %d curves, bbox=(%.3f,%.3f)-(%.3f,%.3f)\n",
-		len(icon.glyph.curves),
-		icon.glyph.bbox_min.x,
-		icon.glyph.bbox_min.y,
-		icon.glyph.bbox_max.x,
-		icon.glyph.bbox_max.y,
-	)
-
 	return icon, true
 }
 
 // Load an SVG file and place it into a font's glyph slot.
-// Must be called BEFORE process_font / pack_glyph_textures.
+// Must be called BEFORE font_process / pack_glyph_textures.
 svg_load_into_font :: proc(font: ^Font, slot_index: int, path: string) -> bool {
 	if slot_index < 0 || slot_index >= MAX_CACHED_GLYPHS {
-		fmt.eprintln("SVG: invalid glyph slot index:", slot_index)
 		return false
 	}
 
@@ -134,6 +120,7 @@ svg_extract_path_d :: proc(svg: string) -> string {
 
 // --- SVG path parser ---
 
+@(private = "file")
 SVG_Parser :: struct {
 	data:      string,
 	pos:       int,
@@ -148,6 +135,7 @@ SVG_Parser :: struct {
 	vb_h:      f32,
 }
 
+@(private = "file")
 svg_parse_path_data :: proc(path_d: string, vb_x, vb_y, vb_w, vb_h: f32, glyph: ^Glyph_Data) {
 	p := SVG_Parser {
 		data = path_d,
@@ -181,6 +169,7 @@ svg_parse_path_data :: proc(path_d: string, vb_x, vb_y, vb_w, vb_h: f32, glyph: 
 	}
 }
 
+@(private = "file")
 svg_execute_command :: proc(p: ^SVG_Parser, cmd: u8, glyph: ^Glyph_Data) {
 	is_rel := cmd >= 'a' && cmd <= 'z'
 
@@ -360,10 +349,12 @@ svg_execute_command :: proc(p: ^SVG_Parser, cmd: u8, glyph: ^Glyph_Data) {
 
 // --- Coordinate transform ---
 
+@(private = "file")
 svg_to_em :: proc(p: ^SVG_Parser, sx, sy: f32) -> [2]f32 {
 	return {(sx - p.vb_x) / p.vb_w, 1.0 - (sy - p.vb_y) / p.vb_h}
 }
 
+@(private = "file")
 svg_emit_line :: proc(p: ^SVG_Parser, glyph: ^Glyph_Data, x0, y0, x1, y1: f32) {
 	p1 := svg_to_em(p, x0, y0)
 	p3 := svg_to_em(p, x1, y1)
@@ -371,6 +362,7 @@ svg_emit_line :: proc(p: ^SVG_Parser, glyph: ^Glyph_Data, x0, y0, x1, y1: f32) {
 	append(&glyph.curves, Bezier_Curve{p1, p2, p3})
 }
 
+@(private = "file")
 svg_emit_quadratic :: proc(p: ^SVG_Parser, glyph: ^Glyph_Data, x0, y0, cpx, cpy, x1, y1: f32) {
 	p1 := svg_to_em(p, x0, y0)
 	p2 := svg_to_em(p, cpx, cpy)
@@ -378,6 +370,7 @@ svg_emit_quadratic :: proc(p: ^SVG_Parser, glyph: ^Glyph_Data, x0, y0, cpx, cpy,
 	append(&glyph.curves, Bezier_Curve{p1, p2, p3})
 }
 
+@(private = "file")
 svg_emit_cubic :: proc(
 	p: ^SVG_Parser,
 	glyph: ^Glyph_Data,
@@ -390,6 +383,7 @@ svg_emit_cubic :: proc(
 	cubic_to_quadratics(cp0, cp1, cp2, cp3, &glyph.curves, CUBIC_TO_QUAD_TOLERANCE)
 }
 
+@(private = "file")
 svg_compute_bbox :: proc(glyph: ^Glyph_Data) {
 	if len(glyph.curves) == 0 do return
 
@@ -413,6 +407,7 @@ svg_compute_bbox :: proc(glyph: ^Glyph_Data) {
 
 // --- Tokenizer helpers ---
 
+@(private = "file")
 svg_skip_ws :: proc(p: ^SVG_Parser) {
 	for p.pos < len(p.data) {
 		ch := p.data[p.pos]
@@ -424,6 +419,7 @@ svg_skip_ws :: proc(p: ^SVG_Parser) {
 	}
 }
 
+@(private = "file")
 svg_is_command :: proc(ch: u8) -> bool {
 	switch ch {
 	case 'M', 'm', 'L', 'l', 'H', 'h', 'V', 'v':
@@ -438,10 +434,12 @@ svg_is_command :: proc(ch: u8) -> bool {
 	return false
 }
 
+@(private = "file")
 svg_is_number_start :: proc(ch: u8) -> bool {
 	return (ch >= '0' && ch <= '9') || ch == '-' || ch == '+' || ch == '.'
 }
 
+@(private = "file")
 svg_parse_number :: proc(p: ^SVG_Parser) -> f32 {
 	svg_skip_ws(p)
 	if p.pos >= len(p.data) do return 0
@@ -479,6 +477,7 @@ svg_parse_number :: proc(p: ^SVG_Parser) -> f32 {
 	return parse_f32(num_str)
 }
 
+@(private = "file")
 parse_f32 :: proc(s: string) -> f32 {
 	val, ok := strconv.parse_f32(s)
 	if !ok do return 0

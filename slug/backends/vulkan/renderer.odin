@@ -247,7 +247,7 @@ load_font :: proc(r: ^Renderer, slot: int, path: string, name: string = "") -> b
 
 	slug.font_load_ascii(&r.ctx.fonts[slot])
 
-	pack := slug.process_font(&r.ctx.fonts[slot])
+	pack := slug.font_process(&r.ctx.fonts[slot])
 	defer slug.pack_result_destroy(&pack)
 
 	return upload_font_textures(r, slot, &pack, name)

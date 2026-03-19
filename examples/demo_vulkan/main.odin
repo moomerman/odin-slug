@@ -114,7 +114,7 @@ main :: proc() {
 		slug.svg_load_into_font(&font, ICON_HEART, ICON_HEART_PATH)
 		slug.svg_load_into_font(&font, ICON_MEGAPHONE, ICON_MEGAPHONE_PATH)
 
-		pack := slug.process_font(&font)
+		pack := slug.font_process(&font)
 		defer slug.pack_result_destroy(&pack)
 
 		renderer.ctx.fonts[0] = font

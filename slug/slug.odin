@@ -24,7 +24,7 @@ package slug
 // Usage:
 //   1. Create a Context
 //   2. Load fonts with font_load / font_load_ascii
-//   3. Process fonts with process_font (generates GPU texture data)
+//   3. Process fonts with font_process (generates GPU texture data)
 //   4. Pass Texture_Pack_Result to your backend for GPU upload
 //   5. Per frame: begin() -> draw_text() / draw_icon() -> end()
 //   6. Backend reads ctx.vertices[:vertex_count()] and draws
@@ -175,12 +175,15 @@ end :: proc(ctx: ^Context) {
 }
 
 // Switch to a different font slot. All subsequent draw calls use this font.
-// IMPORTANT: You cannot switch back to a font that already has quads —
-// draw all content for each font contiguously.
-use_font :: proc(ctx: ^Context, slot: int) {
-	if slot < 0 || slot >= MAX_FONT_SLOTS do return
-	if !ctx.font_loaded[slot] do return
-	if slot == ctx.active_font_idx do return
+// Returns false if the slot is invalid, not loaded, or already has quads
+// (switching back would corrupt the batch layout).
+use_font :: proc(ctx: ^Context, slot: int) -> bool {
+	if slot < 0 || slot >= MAX_FONT_SLOTS do return false
+	if !ctx.font_loaded[slot] do return false
+	if slot == ctx.active_font_idx do return true
+
+	// Reject switching back to a font that already has quads
+	if ctx.font_quad_count[slot] > 0 do return false
 
 	// Finalize previous font's quad range
 	prev := ctx.active_font_idx
@@ -189,6 +192,19 @@ use_font :: proc(ctx: ^Context, slot: int) {
 	// Start new font's range
 	ctx.active_font_idx = slot
 	ctx.font_quad_start[slot] = ctx.quad_count
+	return true
+}
+
+// Register a loaded font into a context slot.
+// slot must be in [0, MAX_FONT_SLOTS). Returns false if the slot is invalid.
+register_font :: proc(ctx: ^Context, slot: int, font: Font) -> bool {
+	if slot < 0 || slot >= MAX_FONT_SLOTS do return false
+	ctx.fonts[slot] = font
+	ctx.font_loaded[slot] = true
+	if slot >= ctx.font_count {
+		ctx.font_count = slot + 1
+	}
+	return true
 }
 
 // Get pointer to the currently active font.

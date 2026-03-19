@@ -384,7 +384,7 @@ load_font :: proc(r: ^Renderer, slot: int, path: string) -> bool {
 		return false
 	}
 
-	pack := slug.process_font(&r.ctx.fonts[slot])
+	pack := slug.font_process(&r.ctx.fonts[slot])
 	defer slug.pack_result_destroy(&pack)
 
 	fg := &r.font_gl[slot]
@@ -509,7 +509,7 @@ flush :: proc(r: ^Renderer, width, height: i32) {
 // ===================================================
 //
 // Use this when you need to load SVG icons into the font between
-// font_load_ascii and process_font, or when you want more control
+// font_load_ascii and font_process, or when you want more control
 // over the loading pipeline. For simple cases, use load_font() instead.
 
 upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_Result) -> bool {

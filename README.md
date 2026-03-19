@@ -149,7 +149,8 @@ docs/
 | `font_load_ascii(font)` | Load glyphs 32-126 |
 | `font_load_glyph(font, codepoint)` | Load a single glyph |
 | `font_get_kerning(font, left, right)` | Kerning adjustment between two glyphs |
-| `process_font(font)` | Process glyphs + pack textures |
+| `font_process(font)` | Process glyphs + pack textures |
+| `register_font(ctx, slot, font)` | Register a loaded font into a context slot |
 | `svg_load_into_font(font, slot, path)` | Load SVG icon into glyph slot |
 | `destroy(ctx)` | Free all fonts and glyph data |
 
@@ -258,7 +259,7 @@ slug.use_font(ctx, 0)  // This would overwrite font 0's quad range!
 Load SVG icons into unused glyph slots (128+) to render vector art through the same pipeline as text:
 
 ```odin
-// Before process_font:
+// Before font_process:
 slug.svg_load_into_font(&font, 128, "icons/shield.svg")
 slug.svg_load_into_font(&font, 129, "icons/sword.svg")
 

@@ -111,6 +111,7 @@ draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: [
 // --- Vertex packing ---
 
 // Emit a single glyph quad into the vertex buffer (axis-aligned).
+@(private = "package")
 emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: [4]f32) {
 	base := ctx.quad_count * VERTICES_PER_QUAD
 	if base + VERTICES_PER_QUAD > MAX_GLYPH_VERTICES do return
@@ -162,6 +163,7 @@ emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: [
 
 // Emit a glyph quad with an arbitrary 2x2 transform (rotation + scale).
 // center_x, center_y is the glyph center in screen space.
+@(private = "package")
 emit_glyph_quad_transformed :: proc(
 	ctx: ^Context,
 	g: ^Glyph_Data,

@@ -1,6 +1,5 @@
 package slug
 
-import "core:fmt"
 import "core:math"
 
 // ===================================================
@@ -19,6 +18,7 @@ import "core:math"
 // ===================================================
 
 // Process a glyph: generate horizontal and vertical bands, sort curves.
+@(private = "package")
 glyph_process :: proc(g: ^Glyph_Data) {
 	if len(g.curves) == 0 do return
 
@@ -113,6 +113,7 @@ glyph_process :: proc(g: ^Glyph_Data) {
 	}
 }
 
+@(private = "file")
 sort_curve_indices_by_max_x :: proc(indices: []u16, curves: []Bezier_Curve) {
 	for i := 1; i < len(indices); i += 1 {
 		key := indices[i]
@@ -132,6 +133,7 @@ sort_curve_indices_by_max_x :: proc(indices: []u16, curves: []Bezier_Curve) {
 	}
 }
 
+@(private = "file")
 sort_curve_indices_by_max_y :: proc(indices: []u16, curves: []Bezier_Curve) {
 	for i := 1; i < len(indices); i += 1 {
 		key := indices[i]
@@ -171,6 +173,7 @@ pack_result_destroy :: proc(r: ^Texture_Pack_Result) {
 
 // Pack all glyphs in a font into GPU texture data.
 // Returns raw texture data that backends upload to the GPU.
+@(private = "file")
 pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 	curve_x: u32 = 0
 	curve_y: u32 = 0
@@ -285,16 +288,6 @@ pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 		resize(&result.band_data, target_band_texels)
 	}
 
-	fmt.printf(
-		"Texture pack: curve=%dx%d (%d texels), band=%dx%d (%d texels)\n",
-		result.curve_width,
-		result.curve_height,
-		len(result.curve_data),
-		result.band_width,
-		result.band_height,
-		len(result.band_data),
-	)
-
 	return result
 }
 
@@ -302,6 +295,7 @@ pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 // Float16 conversion (f32 -> f16 stored as u16)
 // ===================================================
 
+@(private = "file")
 f32_to_f16 :: proc(value: f32) -> u16 {
 	bits := transmute(u32)value
 
@@ -329,7 +323,7 @@ f32_to_f16 :: proc(value: f32) -> u16 {
 
 // Process all valid glyphs in a font and pack textures.
 // Convenience proc that calls glyph_process on each glyph, then packs.
-process_font :: proc(font: ^Font) -> Texture_Pack_Result {
+font_process :: proc(font: ^Font) -> Texture_Pack_Result {
 	for gi in 0 ..< MAX_CACHED_GLYPHS {
 		g := &font.glyphs[gi]
 		if g.valid && len(g.curves) > 0 {

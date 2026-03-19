@@ -1,7 +1,6 @@
 package slug
 
 import "core:c"
-import "core:fmt"
 import "core:os"
 import stbtt "vendor:stb/truetype"
 
@@ -17,14 +16,12 @@ import stbtt "vendor:stb/truetype"
 font_load :: proc(path: string) -> (font: Font, ok: bool) {
 	data, read_err := os.read_entire_file(path, context.allocator)
 	if read_err != nil {
-		fmt.eprintln("Failed to read font file:", path)
 		return {}, false
 	}
 	font.font_data = data
 
 	info := &font.info
 	if stbtt.InitFont(info, raw_data(data), 0) == false {
-		fmt.eprintln("Failed to parse font:", path)
 		delete(data)
 		return {}, false
 	}
@@ -37,14 +34,6 @@ font_load :: proc(path: string) -> (font: Font, ok: bool) {
 	font.ascent = f32(ascent_raw) * font.em_scale
 	font.descent = f32(descent_raw) * font.em_scale
 	font.line_gap = f32(line_gap_raw) * font.em_scale
-
-	fmt.printf(
-		"Font loaded: ascent=%.3f descent=%.3f line_gap=%.3f em_scale=%.6f\n",
-		font.ascent,
-		font.descent,
-		font.line_gap,
-		font.em_scale,
-	)
 
 	return font, true
 }
@@ -159,7 +148,6 @@ font_load_ascii :: proc(font: ^Font) -> int {
 			loaded += 1
 		}
 	}
-	fmt.printf("Loaded %d ASCII glyphs\n", loaded)
 	return loaded
 }
 

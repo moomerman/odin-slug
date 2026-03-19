@@ -20,19 +20,19 @@ Tracked issues to address, roughly in priority order.
 
 ### High Priority (correctness / usability)
 
-- [ ] **Remove all `fmt.printf`/`println` from core library** — `ttf.odin` (3 info prints), `glyph.odin` (1 in `pack_glyph_textures`), `svg.odin` (1 in `svg_parse`). A reusable library should be silent. Error prints (`fmt.eprintln`) in the core should become return values.
-- [ ] **Add `register_font(ctx, slot, font)` proc** — Replace the 3-line internal bookkeeping pattern (`ctx.fonts[0] = font; ctx.font_loaded[0] = true; ctx.font_count = ...`) that every demo repeats.
-- [ ] **Make SVG parser internals private** — `SVG_Parser`, `svg_execute_command`, `svg_parse_path_data`, `svg_skip_ws`, `svg_is_command`, `svg_is_number_start`, `svg_parse_number`, `svg_to_em`, `svg_emit_line`, `svg_emit_quadratic`, `svg_emit_cubic`, `svg_compute_bbox`, `parse_f32` should all be `@(private = "file")`.
-- [ ] **Make glyph processing internals private** — `sort_curve_indices_by_max_x`, `sort_curve_indices_by_max_y`, `glyph_process`, `pack_glyph_textures`, `f32_to_f16` should be `@(private = "file")` or `@(private = "package")`.
-- [ ] **Make vertex packing internals private** — `emit_glyph_quad` and `emit_glyph_quad_transformed` should be `@(private = "package")` — they're used by effects.odin but shouldn't be user-facing.
-- [ ] **Replace custom `utf8_decode`** — `effects.odin:330-349` reimplements UTF-8 decoding. Use Odin's built-in rune iteration or `core:unicode/utf8` instead.
-- [ ] **`use_font` should detect and reject switching back** — Currently silently corrupts the batch layout. Should return `bool` or assert.
+- [x] **Remove all `fmt.printf`/`println` from core library** — Removed all info prints and error prints from `ttf.odin`, `glyph.odin`, `svg.odin`. Removed `fmt` imports. Procs return `false` to signal errors.
+- [x] **Add `register_font(ctx, slot, font)` proc** — Added to `slug.odin`. Replaces the 3-line bookkeeping pattern.
+- [x] **Make SVG parser internals private** — All internal procs and `SVG_Parser` struct marked `@(private = "file")`.
+- [x] **Make glyph processing internals private** — `sort_curve_indices_by_max_x/y`, `pack_glyph_textures`, `f32_to_f16` are `@(private = "file")`. `glyph_process` is `@(private = "package")` (used by svg.odin).
+- [x] **Make vertex packing internals private** — `emit_glyph_quad` and `emit_glyph_quad_transformed` marked `@(private = "package")`.
+- [x] **Replace custom `utf8_decode`** — Now uses `core:unicode/utf8.decode_rune_in_string`.
+- [x] **`use_font` should detect and reject switching back** — Now returns `bool`, rejects switching to a font that already has quads.
 
 ### Medium Priority (API ergonomics)
 
 - [ ] **Add `Color :: [4]f32` type alias** — Used in 15+ proc signatures. Add to `slug.odin` with the type definition. Optionally add helpers like `color_rgb(r, g, b)`, `color_rgba(r, g, b, a)`.
-- [ ] **Fix naming inconsistency: `process_font` → `font_process`** — All other font procs use `font_verb` pattern.
-- [ ] **Add `load_font_with_icons` convenience proc** — Every demo with SVGs repeats: `font_load` → `font_load_ascii` → `svg_load_into_font` × N → `process_font`. Wrap this.
+- [x] **Fix naming inconsistency: `process_font` → `font_process`** — Renamed in core, backends, and examples.
+- [ ] **Add `load_font_with_icons` convenience proc** — Every demo with SVGs repeats: `font_load` → `font_load_ascii` → `svg_load_into_font` × N → `font_process`. Wrap this.
 - [ ] **`Texture_Pack_Result` ownership** — Backend `upload_font_textures` could optionally consume and destroy the pack result, since the GPU has the data at that point.
 - [ ] **Add `unload_font(ctx, slot)` proc** — Currently only `destroy()` tears down everything. No way to swap a single font at runtime.
 - [ ] **Remove info prints from backends** — `slug_opengl: font slot %d loaded` in opengl.odin, `Font slot %d loaded: %s` in vulkan renderer.

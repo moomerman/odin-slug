@@ -1,6 +1,7 @@
 package slug
 
 import "core:math"
+import "core:unicode/utf8"
 
 // ===================================================
 // Text effects — per-character manipulation.
@@ -317,33 +318,11 @@ draw_text_typewriter :: proc(
 	byte_end := 0
 	for i := 0; i < len(text); {
 		if char_count >= visible_chars do break
-		_, size := utf8_decode(text[i:])
+		_, size := utf8.decode_rune_in_string(text[i:])
 		i += size
 		byte_end = i
 		char_count += 1
 	}
 
 	draw_text(ctx, text[:byte_end], x, y, font_size, color)
-}
-
-@(private = "file")
-utf8_decode :: proc(s: string) -> (r: rune, size: int) {
-	if len(s) == 0 do return 0, 0
-	b := s[0]
-	if b < 0x80 do return rune(b), 1
-	if b < 0xC0 do return 0xFFFD, 1
-	if b < 0xE0 {
-		if len(s) < 2 do return 0xFFFD, 1
-		return rune(b & 0x1F) << 6 | rune(s[1] & 0x3F), 2
-	}
-	if b < 0xF0 {
-		if len(s) < 3 do return 0xFFFD, 1
-		return rune(b & 0x0F) << 12 | rune(s[1] & 0x3F) << 6 | rune(s[2] & 0x3F), 3
-	}
-	if len(s) < 4 do return 0xFFFD, 1
-	return rune(b & 0x07) << 18 |
-		rune(s[1] & 0x3F) << 12 |
-		rune(s[2] & 0x3F) << 6 |
-		rune(s[3] & 0x3F),
-		4
 }
