@@ -102,7 +102,7 @@ main :: proc() {
 	// 3. Load fonts
 	// -----------------------------------------------
 
-	// Slot 0: Sans + SVG icons (manual pipeline — icons must load before process_font)
+	// Slot 0: Sans + SVG icons (manual pipeline — icons must load before font_process)
 	{
 		font, font_ok := slug.font_load(FONT_SANS)
 		if !font_ok {
@@ -117,9 +117,7 @@ main :: proc() {
 		pack := slug.font_process(&font)
 		defer slug.pack_result_destroy(&pack)
 
-		renderer.ctx.fonts[0] = font
-		renderer.ctx.font_loaded[0] = true
-		renderer.ctx.font_count = 1
+		slug.register_font(&renderer.ctx, 0, font)
 		slug_vk.upload_font_textures(renderer, 0, &pack, "Sans")
 	}
 

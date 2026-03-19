@@ -120,7 +120,7 @@ main :: proc() {
 	// Each font occupies a "slot" (0 to MAX_FONT_SLOTS-1). SVG icons are
 	// loaded into glyph slots 128+ on a font, then processed together.
 	//
-	// SVG icons must be loaded BEFORE process_font() is called, so we use
+	// SVG icons must be loaded BEFORE font_process() is called, so we use
 	// the manual pipeline for slot 0 (which has icons). Slot 1 uses the
 	// convenience load_font() since it has no icons.
 
@@ -142,10 +142,7 @@ main :: proc() {
 		pack := slug.font_process(&font)
 		defer slug.pack_result_destroy(&pack)
 
-		renderer.ctx.fonts[0] = font
-		renderer.ctx.font_loaded[0] = true
-		renderer.ctx.font_count = 1
-
+		slug.register_font(&renderer.ctx, 0, font)
 		slug_gl.upload_font_textures(renderer, 0, &pack)
 	}
 

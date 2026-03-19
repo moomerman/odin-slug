@@ -90,6 +90,7 @@ svg_load_into_font :: proc(font: ^Font, slot_index: int, path: string) -> bool {
 
 // --- XML attribute extraction ---
 
+@(private = "file")
 svg_extract_viewbox :: proc(svg: string, x, y, w, h: ^f32) -> bool {
 	vb_start := strings.index(svg, "viewBox=\"")
 	if vb_start < 0 do return false
@@ -109,6 +110,7 @@ svg_extract_viewbox :: proc(svg: string, x, y, w, h: ^f32) -> bool {
 	return w^ > 0 && h^ > 0
 }
 
+@(private = "file")
 svg_extract_path_d :: proc(svg: string) -> string {
 	d_start := strings.index(svg, " d=\"")
 	if d_start < 0 do return ""

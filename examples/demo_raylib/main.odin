@@ -100,7 +100,7 @@ main :: proc() {
 	// 3. Load font + SVG icons
 	// -----------------------------------------------
 	//
-	// SVG icons must be loaded before process_font(), so we use the
+	// SVG icons must be loaded before font_process(), so we use the
 	// manual pipeline here. For fonts without icons, use slug_rl.load_font().
 
 	ctx := slug_rl.ctx(renderer)
@@ -117,9 +117,7 @@ main :: proc() {
 		pack := slug.font_process(&font)
 		defer slug.pack_result_destroy(&pack)
 
-		ctx.fonts[0] = font
-		ctx.font_loaded[0] = true
-		ctx.font_count = 1
+		slug.register_font(ctx, 0, font)
 		slug_rl.upload_font_textures(renderer, 0, &pack)
 	}
 
