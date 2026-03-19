@@ -1,0 +1,17 @@
+# Build output
+*.o
+*.a
+*.exe
+
+# Editor
+*~
+*.swp
+*.swo
+.#*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
