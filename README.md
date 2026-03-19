@@ -146,12 +146,14 @@ docs/
 | `active_font(ctx)` | Pointer to current font |
 | `vertex_count(ctx)` | Vertices written this frame |
 | `font_load(path)` | Load a TTF file |
+| `font_load_with_icons(path, icons)` | Load font + ASCII + SVG icons + process (all-in-one) |
 | `font_load_ascii(font)` | Load glyphs 32-126 |
 | `font_load_glyph(font, codepoint)` | Load a single glyph |
 | `font_get_kerning(font, left, right)` | Kerning adjustment between two glyphs |
 | `font_process(font)` | Process glyphs + pack textures |
 | `register_font(ctx, slot, font)` | Register a loaded font into a context slot |
 | `svg_load_into_font(font, slot, path)` | Load SVG icon into glyph slot |
+| `unload_font(ctx, slot)` | Free a single font slot at runtime |
 | `destroy(ctx)` | Free all fonts and glyph data |
 
 ### Text Effects (package slug)

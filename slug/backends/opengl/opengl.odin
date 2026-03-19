@@ -424,7 +424,6 @@ load_font :: proc(r: ^Renderer, slot: int, path: string) -> bool {
 	)
 
 	fg.loaded = true
-	fmt.printf("slug_opengl: font slot %d loaded (%d glyphs)\n", slot, loaded)
 	return true
 }
 

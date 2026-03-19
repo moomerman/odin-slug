@@ -17,8 +17,19 @@ hsv_to_rgb :: proc(h, s, v: f32) -> [3]f32 {
 	m := v - c
 
 	r, g, b: f32
-	if hp <
-	   1 {r, g, b = c, x, 0} else if hp < 2 {r, g, b = x, c, 0} else if hp < 3 {r, g, b = 0, c, x} else if hp < 4 {r, g, b = 0, x, c} else if hp < 5 {r, g, b = x, 0, c} else {r, g, b = c, 0, x}
+	if hp < 1 {
+		r, g, b = c, x, 0
+	} else if hp < 2 {
+		r, g, b = x, c, 0
+	} else if hp < 3 {
+		r, g, b = 0, c, x
+	} else if hp < 4 {
+		r, g, b = 0, x, c
+	} else if hp < 5 {
+		r, g, b = x, 0, c
+	} else {
+		r, g, b = c, 0, x
+	}
 
 	return {r + m, g + m, b + m}
 }
@@ -47,7 +58,7 @@ draw_text_rainbow :: proc(
 
 		hue := math.mod(time * speed + f32(char_idx) * spread, 360.0)
 		rgb := hsv_to_rgb(hue, 1.0, 1.0)
-		color := [4]f32{rgb.x, rgb.y, rgb.z, 1.0}
+		color := Color{rgb.x, rgb.y, rgb.z, 1.0}
 
 		glyph_x := pen_x + g.bbox_min.x * font_size
 		glyph_y := y - g.bbox_max.y * font_size
@@ -75,7 +86,7 @@ draw_text_wobble :: proc(
 	amplitude: f32 = 8.0,
 	frequency: f32 = 3.0,
 	phase_step: f32 = 0.5,
-	color: [4]f32 = {1.0, 1.0, 1.0, 1.0},
+	color: Color = {1.0, 1.0, 1.0, 1.0},
 ) {
 	font := active_font(ctx)
 	pen_x := x
@@ -113,7 +124,7 @@ draw_text_shake :: proc(
 	font_size: f32,
 	intensity: f32 = 3.0,
 	time: f32 = 0,
-	color: [4]f32 = {1.0, 0.3, 0.3, 1.0},
+	color: Color = {1.0, 0.3, 0.3, 1.0},
 ) {
 	font := active_font(ctx)
 	pen_x := x
@@ -152,7 +163,7 @@ draw_text_rotated :: proc(
 	cx, cy: f32,
 	font_size: f32,
 	angle: f32,
-	color: [4]f32,
+	color: Color,
 ) {
 	font := active_font(ctx)
 
@@ -200,7 +211,7 @@ draw_text_on_circle :: proc(
 	radius: f32,
 	start_angle: f32,
 	font_size: f32,
-	color: [4]f32,
+	color: Color,
 ) {
 	font := active_font(ctx)
 	pen_angle := start_angle
@@ -246,7 +257,7 @@ draw_text_on_wave :: proc(
 	amplitude: f32 = 15.0,
 	wavelength: f32 = 300.0,
 	phase: f32 = 0,
-	color: [4]f32 = {1.0, 0.5, 0.7, 1.0},
+	color: Color = {1.0, 0.5, 0.7, 1.0},
 ) {
 	font := active_font(ctx)
 	pen_x := x
@@ -291,9 +302,9 @@ draw_text_shadow :: proc(
 	text: string,
 	x, y: f32,
 	font_size: f32,
-	color: [4]f32,
+	color: Color,
 	shadow_offset: f32 = 2.0,
-	shadow_color: [4]f32 = {0.0, 0.0, 0.0, 0.6},
+	shadow_color: Color = {0.0, 0.0, 0.0, 0.6},
 ) {
 	draw_text(ctx, text, x + shadow_offset, y + shadow_offset, font_size, shadow_color)
 	draw_text(ctx, text, x, y, font_size, color)
@@ -307,7 +318,7 @@ draw_text_typewriter :: proc(
 	text: string,
 	x, y: f32,
 	font_size: f32,
-	color: [4]f32,
+	color: Color,
 	time: f32,
 	chars_per_sec: f32 = 12.0,
 ) {

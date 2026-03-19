@@ -48,7 +48,7 @@ draw_text :: proc(
 	text: string,
 	x, y: f32,
 	font_size: f32,
-	color: [4]f32,
+	color: Color,
 	use_kerning: bool = true,
 ) {
 	font := active_font(ctx)
@@ -91,7 +91,7 @@ draw_text :: proc(
 
 // Draw an SVG icon centered at the given screen position.
 // icon_index is the glyph slot (use 128+ to avoid ASCII collision).
-draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: [4]f32) {
+draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: Color) {
 	font := active_font(ctx)
 	if icon_index < 0 || icon_index >= MAX_CACHED_GLYPHS do return
 	g := &font.glyphs[icon_index]
@@ -112,7 +112,7 @@ draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: [
 
 // Emit a single glyph quad into the vertex buffer (axis-aligned).
 @(private = "package")
-emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: [4]f32) {
+emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: Color) {
 	base := ctx.quad_count * VERTICES_PER_QUAD
 	if base + VERTICES_PER_QUAD > MAX_GLYPH_VERTICES do return
 
@@ -169,7 +169,7 @@ emit_glyph_quad_transformed :: proc(
 	g: ^Glyph_Data,
 	center_x, center_y: f32,
 	xform: matrix[2, 2]f32,
-	color: [4]f32,
+	color: Color,
 ) {
 	base := ctx.quad_count * VERTICES_PER_QUAD
 	if base + VERTICES_PER_QUAD > MAX_GLYPH_VERTICES do return

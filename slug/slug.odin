@@ -58,6 +58,9 @@ DILATION_SCALE :: f32(1.0)
 // Maximum error for cubic-to-quadratic Bezier subdivision (in em-space units)
 CUBIC_TO_QUAD_TOLERANCE :: f32(0.001)
 
+// RGBA color as 4 floats (0.0–1.0 per channel).
+Color :: [4]f32
+
 // --- Vertex Format ---
 // Matches the 5x vec4 attribute layout in the vertex shader (locations 0-4).
 // 80 bytes per vertex. All data for fragment-shader curve evaluation is packed
@@ -68,7 +71,7 @@ Vertex :: struct {
 	tex: [4]f32, // .xy = em-space texcoord, .zw = packed glyph/band texture coords
 	jac: [4]f32, // 2x2 inverse Jacobian (screen-space -> em-space)
 	bnd: [4]f32, // band transform: em coord -> band index via (coord * scale + offset)
-	col: [4]f32, // vertex color RGBA
+	col: Color, // vertex color RGBA
 }
 
 // --- Curve and Glyph Types ---
@@ -209,6 +212,7 @@ register_font :: proc(ctx: ^Context, slot: int, font: Font) -> bool {
 
 // Get pointer to the currently active font.
 active_font :: proc(ctx: ^Context) -> ^Font {
+	assert(ctx.active_font_idx >= 0 && ctx.active_font_idx < MAX_FONT_SLOTS)
 	return &ctx.fonts[ctx.active_font_idx]
 }
 
@@ -234,6 +238,15 @@ font_destroy :: proc(font: ^Font) {
 	}
 	delete(font.font_data)
 	font^ = {}
+}
+
+// Unload a single font from a context slot, freeing its glyph data.
+// The backend is responsible for releasing any associated GPU resources.
+unload_font :: proc(ctx: ^Context, slot: int) {
+	if slot < 0 || slot >= MAX_FONT_SLOTS do return
+	if !ctx.font_loaded[slot] do return
+	font_destroy(&ctx.fonts[slot])
+	ctx.font_loaded[slot] = false
 }
 
 destroy :: proc(ctx: ^Context) {

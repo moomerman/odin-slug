@@ -90,8 +90,6 @@ main :: proc() {
 	renderer := new(slug_vk.Renderer)
 	defer free(renderer)
 
-	renderer.zoom = 1.0
-
 	if !slug_vk.init(renderer, window) {
 		fmt.eprintln("Failed to initialize Vulkan renderer")
 		return

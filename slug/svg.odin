@@ -353,6 +353,7 @@ svg_execute_command :: proc(p: ^SVG_Parser, cmd: u8, glyph: ^Glyph_Data) {
 
 @(private = "file")
 svg_to_em :: proc(p: ^SVG_Parser, sx, sy: f32) -> [2]f32 {
+	// SVG is Y-down, glyph em-space is Y-up — flip Y
 	return {(sx - p.vb_x) / p.vb_w, 1.0 - (sy - p.vb_y) / p.vb_h}
 }
 

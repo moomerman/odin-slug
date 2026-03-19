@@ -98,15 +98,21 @@ Renderer :: struct {
 	// Font instances (GPU resources per font slot)
 	font_instances:        [slug.MAX_FONT_SLOTS]Font_Instance,
 
-	// View transform
-	zoom:                  f32,
-	pan:                   [2]f32,
+	// Shader paths (override before calling init if needed)
+	vert_shader_path:      string,
+	frag_shader_path:      string,
 }
 
 // --- Public API ---
 
+VERT_SHADER_DEFAULT_PATH :: "slug/shaders/slug_vert.spv"
+FRAG_SHADER_DEFAULT_PATH :: "slug/shaders/slug_frag.spv"
+
 init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
 	r.window = window
+
+	if len(r.vert_shader_path) == 0 do r.vert_shader_path = VERT_SHADER_DEFAULT_PATH
+	if len(r.frag_shader_path) == 0 do r.frag_shader_path = FRAG_SHADER_DEFAULT_PATH
 
 	// Load Vulkan via SDL3
 	if !sdl.Vulkan_LoadLibrary(nil) {
@@ -337,7 +343,6 @@ upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_R
 
 	fi.loaded = true
 	fi.name = name
-	fmt.printf("Font slot %d loaded: %s\n", slot, name)
 	return true
 }
 
@@ -440,18 +445,8 @@ draw_frame :: proc(r: ^Renderer) -> bool {
 		w := f32(r.swapchain_extent.width)
 		h := f32(r.swapchain_extent.height)
 
-		proj := linalg.matrix_ortho3d_f32(0, w, 0, h, -1, 1)
-
-		zoom := r.zoom if r.zoom > 0 else 1.0
-		cx := w * 0.5
-		cy := h * 0.5
-		view :=
-			linalg.matrix4_translate_f32({cx + r.pan.x, cy + r.pan.y, 0}) *
-			linalg.matrix4_scale_f32({zoom, zoom, 1}) *
-			linalg.matrix4_translate_f32({-cx, -cy, 0})
-
 		pc := Push_Constants {
-			mvp      = proj * view,
+			mvp      = linalg.matrix_ortho3d_f32(0, w, 0, h, -1, 1),
 			viewport = {w, h},
 		}
 
@@ -986,22 +981,16 @@ create_descriptor_pool :: proc(r: ^Renderer) -> bool {
 
 @(private = "file")
 create_slug_pipeline :: proc(r: ^Renderer) -> bool {
-	vert_code, vert_err := os.read_entire_file("slug/shaders/slug_vert.spv", context.allocator)
+	vert_code, vert_err := os.read_entire_file(r.vert_shader_path, context.allocator)
 	if vert_err != nil {
-		fmt.eprintln(
-			"Failed to read slug vertex shader (expected slug/shaders/slug_vert.spv):",
-			vert_err,
-		)
+		fmt.eprintln("Failed to read slug vertex shader:", r.vert_shader_path)
 		return false
 	}
 	defer delete(vert_code)
 
-	frag_code, frag_err := os.read_entire_file("slug/shaders/slug_frag.spv", context.allocator)
+	frag_code, frag_err := os.read_entire_file(r.frag_shader_path, context.allocator)
 	if frag_err != nil {
-		fmt.eprintln(
-			"Failed to read slug fragment shader (expected slug/shaders/slug_frag.spv):",
-			frag_err,
-		)
+		fmt.eprintln("Failed to read slug fragment shader:", r.frag_shader_path)
 		return false
 	}
 	defer delete(frag_code)
