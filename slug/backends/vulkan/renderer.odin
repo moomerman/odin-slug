@@ -443,14 +443,7 @@ draw_frame :: proc(r: ^Renderer) -> bool {
 			viewport = {w, h},
 		}
 
-		vk.CmdPushConstants(
-			cmd,
-			r.pipeline_layout,
-			{.VERTEX},
-			0,
-			size_of(Push_Constants),
-			&pc,
-		)
+		vk.CmdPushConstants(cmd, r.pipeline_layout, {.VERTEX}, 0, size_of(Push_Constants), &pc)
 
 		// Bind vertex and index buffers
 		vb_offset := vk.DeviceSize(0)
@@ -490,12 +483,7 @@ draw_frame :: proc(r: ^Renderer) -> bool {
 		pSignalSemaphores    = &r.render_finished[frame],
 	}
 
-	submit_result := vk.QueueSubmit(
-		r.graphics_queue,
-		1,
-		&submit_info,
-		r.in_flight_fences[frame],
-	)
+	submit_result := vk.QueueSubmit(r.graphics_queue, 1, &submit_info, r.in_flight_fences[frame])
 	if submit_result != .SUCCESS {
 		fmt.eprintln("Failed to submit draw command:", submit_result)
 		return false
@@ -950,12 +938,7 @@ create_descriptor_set_layout :: proc(r: ^Renderer) -> bool {
 		pBindings    = &bindings[0],
 	}
 
-	result := vk.CreateDescriptorSetLayout(
-		r.device,
-		&layout_info,
-		nil,
-		&r.descriptor_set_layout,
-	)
+	result := vk.CreateDescriptorSetLayout(r.device, &layout_info, nil, &r.descriptor_set_layout)
 	if result != .SUCCESS {
 		fmt.eprintln("Failed to create descriptor set layout:", result)
 		return false
@@ -993,14 +976,20 @@ create_descriptor_pool :: proc(r: ^Renderer) -> bool {
 create_slug_pipeline :: proc(r: ^Renderer) -> bool {
 	vert_code, vert_err := os.read_entire_file("slug/shaders/slug_vert.spv", context.allocator)
 	if vert_err != nil {
-		fmt.eprintln("Failed to read slug vertex shader (expected slug/shaders/slug_vert.spv):", vert_err)
+		fmt.eprintln(
+			"Failed to read slug vertex shader (expected slug/shaders/slug_vert.spv):",
+			vert_err,
+		)
 		return false
 	}
 	defer delete(vert_code)
 
 	frag_code, frag_err := os.read_entire_file("slug/shaders/slug_frag.spv", context.allocator)
 	if frag_err != nil {
-		fmt.eprintln("Failed to read slug fragment shader (expected slug/shaders/slug_frag.spv):", frag_err)
+		fmt.eprintln(
+			"Failed to read slug fragment shader (expected slug/shaders/slug_frag.spv):",
+			frag_err,
+		)
 		return false
 	}
 	defer delete(frag_code)

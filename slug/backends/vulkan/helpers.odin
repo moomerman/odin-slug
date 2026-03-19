@@ -96,7 +96,13 @@ create_buffer :: proc(
 		return {}, {}, false
 	}
 
-	vk.BindBufferMemory(r.device, buffer, memory, 0)
+	result = vk.BindBufferMemory(r.device, buffer, memory, 0)
+	if result != .SUCCESS {
+		fmt.eprintln("Failed to bind buffer memory:", result)
+		vk.FreeMemory(r.device, memory, nil)
+		vk.DestroyBuffer(r.device, buffer, nil)
+		return {}, {}, false
+	}
 	return buffer, memory, true
 }
 
@@ -111,13 +117,21 @@ begin_one_shot_commands :: proc(r: ^Renderer) -> vk.CommandBuffer {
 	}
 
 	cmd: vk.CommandBuffer
-	vk.AllocateCommandBuffers(r.device, &alloc_info, &cmd)
+	result := vk.AllocateCommandBuffers(r.device, &alloc_info, &cmd)
+	if result != .SUCCESS {
+		fmt.eprintln("Failed to allocate one-shot command buffer:", result)
+		return {}
+	}
 
 	begin_info := vk.CommandBufferBeginInfo {
 		sType = .COMMAND_BUFFER_BEGIN_INFO,
 		flags = {.ONE_TIME_SUBMIT},
 	}
-	vk.BeginCommandBuffer(cmd, &begin_info)
+	result = vk.BeginCommandBuffer(cmd, &begin_info)
+	if result != .SUCCESS {
+		fmt.eprintln("Failed to begin one-shot command buffer:", result)
+		return {}
+	}
 	return cmd
 }
 
@@ -210,7 +224,11 @@ gpu_texture_create :: proc(
 
 	// Copy data to staging
 	mapped: rawptr
-	vk.MapMemory(r.device, staging_mem, 0, image_size, {}, &mapped)
+	map_result := vk.MapMemory(r.device, staging_mem, 0, image_size, {}, &mapped)
+	if map_result != .SUCCESS {
+		fmt.eprintln("Failed to map staging memory:", map_result)
+		return {}, false
+	}
 	mem.copy(mapped, data, data_size)
 	vk.UnmapMemory(r.device, staging_mem)
 
@@ -239,11 +257,7 @@ gpu_texture_create :: proc(
 	mem_requirements: vk.MemoryRequirements
 	vk.GetImageMemoryRequirements(r.device, tex.image, &mem_requirements)
 
-	mem_type, mem_type_ok := find_memory_type(
-		r,
-		mem_requirements.memoryTypeBits,
-		{.DEVICE_LOCAL},
-	)
+	mem_type, mem_type_ok := find_memory_type(r, mem_requirements.memoryTypeBits, {.DEVICE_LOCAL})
 	if !mem_type_ok {
 		fmt.eprintln("Failed to find memory type for image")
 		vk.DestroyImage(r.device, tex.image, nil)
@@ -263,7 +277,13 @@ gpu_texture_create :: proc(
 		return {}, false
 	}
 
-	vk.BindImageMemory(r.device, tex.image, tex.memory, 0)
+	result = vk.BindImageMemory(r.device, tex.image, tex.memory, 0)
+	if result != .SUCCESS {
+		fmt.eprintln("Failed to bind image memory:", result)
+		vk.FreeMemory(r.device, tex.memory, nil)
+		vk.DestroyImage(r.device, tex.image, nil)
+		return {}, false
+	}
 
 	// Transition, copy, transition
 	transition_image_layout(r, tex.image, .UNDEFINED, .TRANSFER_DST_OPTIMAL)

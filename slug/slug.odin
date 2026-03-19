@@ -97,10 +97,10 @@ Glyph_Data :: struct {
 	curves:        [dynamic]Bezier_Curve,
 
 	// Band acceleration data
-	h_bands:       [dynamic]Band,  // Horizontal bands (Y-axis slices)
-	v_bands:       [dynamic]Band,  // Vertical bands (X-axis slices)
-	h_curve_lists: [dynamic]u16,   // Curve indices per horizontal band
-	v_curve_lists: [dynamic]u16,   // Curve indices per vertical band
+	h_bands:       [dynamic]Band, // Horizontal bands (Y-axis slices)
+	v_bands:       [dynamic]Band, // Vertical bands (X-axis slices)
+	h_curve_lists: [dynamic]u16, // Curve indices per horizontal band
+	v_curve_lists: [dynamic]u16, // Curve indices per vertical band
 
 	// GPU texture coordinates (set during packing)
 	curve_tex_x:   u16,

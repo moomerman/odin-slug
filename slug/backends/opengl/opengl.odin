@@ -33,22 +33,22 @@ Font_GL :: struct {
 // --- Renderer state ---
 
 Renderer :: struct {
-	ctx:          slug.Context,
+	ctx:           slug.Context,
 
 	// Shader program and uniform locations
-	program:      u32,
-	mvp_loc:      i32,
-	viewport_loc: i32,
+	program:       u32,
+	mvp_loc:       i32,
+	viewport_loc:  i32,
 	curve_tex_loc: i32,
-	band_tex_loc: i32,
+	band_tex_loc:  i32,
 
 	// GL objects
-	vao:          u32,
-	vbo:          u32,
-	ibo:          u32,
+	vao:           u32,
+	vbo:           u32,
+	ibo:           u32,
 
 	// Per-font textures
-	font_gl:      [slug.MAX_FONT_SLOTS]Font_GL,
+	font_gl:       [slug.MAX_FONT_SLOTS]Font_GL,
 }
 
 // ===================================================
@@ -116,6 +116,7 @@ void main()
     vColor = inCol;
 }
 `
+
 
 FRAGMENT_SHADER_SOURCE :: `#version 330 core
 
@@ -279,6 +280,7 @@ void main()
 }
 `
 
+
 // --- Vertex layout constants ---
 
 VERTEX_SIZE :: size_of(slug.Vertex) // 80 bytes (5x vec4)
@@ -298,10 +300,10 @@ init :: proc(r: ^Renderer) -> bool {
 	r.program = program
 
 	// Cache uniform locations
-	r.mvp_loc       = gl.GetUniformLocation(program, "mvp")
-	r.viewport_loc  = gl.GetUniformLocation(program, "viewport")
+	r.mvp_loc = gl.GetUniformLocation(program, "mvp")
+	r.viewport_loc = gl.GetUniformLocation(program, "viewport")
 	r.curve_tex_loc = gl.GetUniformLocation(program, "curveTexture")
-	r.band_tex_loc  = gl.GetUniformLocation(program, "bandTexture")
+	r.band_tex_loc = gl.GetUniformLocation(program, "bandTexture")
 
 	// Create VAO
 	gl.GenVertexArrays(1, &r.vao)
@@ -310,23 +312,18 @@ init :: proc(r: ^Renderer) -> bool {
 	// Create VBO (dynamic — re-uploaded each frame)
 	gl.GenBuffers(1, &r.vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
-	gl.BufferData(
-		gl.ARRAY_BUFFER,
-		slug.MAX_GLYPH_VERTICES * VERTEX_SIZE,
-		nil,
-		gl.DYNAMIC_DRAW,
-	)
+	gl.BufferData(gl.ARRAY_BUFFER, slug.MAX_GLYPH_VERTICES * VERTEX_SIZE, nil, gl.DYNAMIC_DRAW)
 
 	// Set up vertex attributes: 5x vec4, stride = 80 bytes
 	for i in u32(0) ..< ATTRIB_COUNT {
 		gl.EnableVertexAttribArray(i)
 		gl.VertexAttribPointer(
-			i,                           // attribute index
-			4,                           // components per attribute (vec4)
-			gl.FLOAT,                    // type
-			false,                       // normalized
-			i32(VERTEX_SIZE),            // stride
-			uintptr(i * 16),             // offset (each vec4 = 16 bytes)
+			i, // attribute index
+			4, // components per attribute (vec4)
+			gl.FLOAT, // type
+			false, // normalized
+			i32(VERTEX_SIZE), // stride
+			uintptr(i * 16), // offset (each vec4 = 16 bytes)
 		)
 	}
 
@@ -401,13 +398,13 @@ load_font :: proc(r: ^Renderer, slot: int, path: string) -> bool {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
-		0,                           // level
-		i32(gl.RGBA16F),             // internal format
-		i32(pack.curve_width),       // width
-		i32(pack.curve_height),      // height
-		0,                           // border
-		gl.RGBA,                     // format
-		gl.HALF_FLOAT,               // type
+		0, // level
+		i32(gl.RGBA16F), // internal format
+		i32(pack.curve_width), // width
+		i32(pack.curve_height), // height
+		0, // border
+		gl.RGBA, // format
+		gl.HALF_FLOAT, // type
 		raw_data(pack.curve_data[:]),
 	)
 
@@ -420,13 +417,13 @@ load_font :: proc(r: ^Renderer, slot: int, path: string) -> bool {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
-		0,                           // level
-		i32(gl.RG16UI),              // internal format
-		i32(pack.band_width),        // width
-		i32(pack.band_height),       // height
-		0,                           // border
-		gl.RG_INTEGER,               // format (integer textures need _INTEGER format)
-		gl.UNSIGNED_SHORT,           // type
+		0, // level
+		i32(gl.RG16UI), // internal format
+		i32(pack.band_width), // width
+		i32(pack.band_height), // height
+		0, // border
+		gl.RG_INTEGER, // format (integer textures need _INTEGER format)
+		gl.UNSIGNED_SHORT, // type
 		raw_data(pack.band_data[:]),
 	)
 
@@ -465,12 +462,7 @@ flush :: proc(r: ^Renderer, width, height: i32) {
 	// Upload vertex data
 	gl.BindVertexArray(r.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		0,
-		int(vert_count) * VERTEX_SIZE,
-		&r.ctx.vertices[0],
-	)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, int(vert_count) * VERTEX_SIZE, &r.ctx.vertices[0])
 
 	// Per-font batched draw calls
 	for fi in 0 ..< slug.MAX_FONT_SLOTS {
@@ -527,9 +519,14 @@ upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_R
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, i32(gl.CLAMP_TO_EDGE))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
 	gl.TexImage2D(
-		gl.TEXTURE_2D, 0, i32(gl.RGBA16F),
-		i32(pack.curve_width), i32(pack.curve_height), 0,
-		gl.RGBA, gl.HALF_FLOAT,
+		gl.TEXTURE_2D,
+		0,
+		i32(gl.RGBA16F),
+		i32(pack.curve_width),
+		i32(pack.curve_height),
+		0,
+		gl.RGBA,
+		gl.HALF_FLOAT,
 		raw_data(pack.curve_data[:]),
 	)
 
@@ -541,9 +538,14 @@ upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_R
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, i32(gl.CLAMP_TO_EDGE))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
 	gl.TexImage2D(
-		gl.TEXTURE_2D, 0, i32(gl.RG16UI),
-		i32(pack.band_width), i32(pack.band_height), 0,
-		gl.RG_INTEGER, gl.UNSIGNED_SHORT,
+		gl.TEXTURE_2D,
+		0,
+		i32(gl.RG16UI),
+		i32(pack.band_width),
+		i32(pack.band_height),
+		0,
+		gl.RG_INTEGER,
+		gl.UNSIGNED_SHORT,
 		raw_data(pack.band_data[:]),
 	)
 

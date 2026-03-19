@@ -12,8 +12,8 @@ import "core:strings"
 // Parses <path d="..."> from simple SVGs (like game-icons.net)
 // into Bezier_Curve data that feeds directly into the Slug pipeline.
 //
-// Supported commands: M/m L/l H/h V/v C/c S/s Q/q T/t Z/z
-// Arc (A/a) is NOT supported.
+// Supported commands: M/m L/l H/h V/v C/c S/s Q/q T/t A/a Z/z
+// Arc (A/a) updates the current position but does not emit geometry.
 // ===================================================
 
 SVG_Icon :: struct {
@@ -149,7 +149,7 @@ SVG_Parser :: struct {
 }
 
 svg_parse_path_data :: proc(path_d: string, vb_x, vb_y, vb_w, vb_h: f32, glyph: ^Glyph_Data) {
-	p := SVG_Parser{
+	p := SVG_Parser {
 		data = path_d,
 		vb_x = vb_x,
 		vb_y = vb_y,
@@ -325,6 +325,27 @@ svg_execute_command :: proc(p: ^SVG_Parser, cmd: u8, glyph: ^Glyph_Data) {
 		p.prev_cp_x = cpx
 		p.prev_cp_y = cpy
 		svg_emit_quadratic(p, glyph, x0, y0, cpx, cpy, x, y)
+		p.prev_cmd = cmd
+
+	case 'A', 'a':
+		// Arc parameters: rx ry x-rotation large-arc-flag sweep-flag x y
+		// TODO: Actual arc-to-Bezier conversion is not yet implemented.
+		// We consume all 7 parameters and update the current position to the
+		// arc endpoint so that subsequent commands stay in sync.
+		svg_parse_number(p) // rx
+		svg_parse_number(p) // ry
+		svg_parse_number(p) // x-axis rotation
+		svg_parse_number(p) // large-arc flag
+		svg_parse_number(p) // sweep flag
+		x := svg_parse_number(p)
+		y := svg_parse_number(p)
+		if is_rel {
+			p.cx += x
+			p.cy += y
+		} else {
+			p.cx = x
+			p.cy = y
+		}
 		p.prev_cmd = cmd
 
 	case 'Z', 'z':

@@ -16,7 +16,8 @@ hsv_to_rgb :: proc(h, s, v: f32) -> [3]f32 {
 	m := v - c
 
 	r, g, b: f32
-	if hp < 1 {r, g, b = c, x, 0} else if hp < 2 {r, g, b = x, c, 0} else if hp < 3 {r, g, b = 0, c, x} else if hp < 4 {r, g, b = 0, x, c} else if hp < 5 {r, g, b = x, 0, c} else {r, g, b = c, 0, x}
+	if hp <
+	   1 {r, g, b = c, x, 0} else if hp < 2 {r, g, b = x, c, 0} else if hp < 3 {r, g, b = 0, c, x} else if hp < 4 {r, g, b = 0, x, c} else if hp < 5 {r, g, b = x, 0, c} else {r, g, b = c, 0, x}
 
 	return {r + m, g + m, b + m}
 }
@@ -160,8 +161,8 @@ draw_text_rotated :: proc(
 	sin_a := math.sin(angle)
 
 	xform := matrix[2, 2]f32{
-		cos_a * font_size, -sin_a * font_size,
-		sin_a * font_size,  cos_a * font_size,
+		cos_a * font_size, -sin_a * font_size, 
+		sin_a * font_size, cos_a * font_size, 
 	}
 
 	pen_x: f32 = -total_w * 0.5
@@ -221,8 +222,8 @@ draw_text_on_circle :: proc(
 		sin_t := math.sin(tangent_angle)
 
 		xform := matrix[2, 2]f32{
-			cos_t * font_size, -sin_t * font_size,
-			sin_t * font_size,  cos_t * font_size,
+			cos_t * font_size, -sin_t * font_size, 
+			sin_t * font_size, cos_t * font_size, 
 		}
 
 		if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
@@ -264,8 +265,8 @@ draw_text_on_wave :: proc(
 		sin_t := math.sin(tangent_angle)
 
 		xform := matrix[2, 2]f32{
-			cos_t * font_size, -sin_t * font_size,
-			sin_t * font_size,  cos_t * font_size,
+			cos_t * font_size, -sin_t * font_size, 
+			sin_t * font_size, cos_t * font_size, 
 		}
 
 		em_cx := (g.bbox_min.x + g.bbox_max.x) * 0.5

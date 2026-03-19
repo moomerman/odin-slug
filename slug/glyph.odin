@@ -83,7 +83,7 @@ glyph_process :: proc(g: ^Glyph_Data) {
 
 	clear(&g.h_curve_lists)
 	for bi in 0 ..< h_band_count {
-		g.h_bands[bi] = Band{
+		g.h_bands[bi] = Band {
 			curve_count = u16(len(h_lists[bi])),
 			data_offset = u16(len(g.h_curve_lists)),
 		}
@@ -94,7 +94,7 @@ glyph_process :: proc(g: ^Glyph_Data) {
 
 	clear(&g.v_curve_lists)
 	for bi in 0 ..< v_band_count {
-		g.v_bands[bi] = Band{
+		g.v_bands[bi] = Band {
 			curve_count = u16(len(v_lists[bi])),
 			data_offset = u16(len(g.v_curve_lists)),
 		}
@@ -159,7 +159,6 @@ Texture_Pack_Result :: struct {
 	curve_data:   [dynamic][4]u16,
 	curve_width:  u32,
 	curve_height: u32,
-
 	band_data:    [dynamic][2]u16,
 	band_width:   u32,
 	band_height:  u32,
@@ -199,7 +198,7 @@ pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 		for &curve in g.curves {
 			append(
 				&result.curve_data,
-				[4]u16{
+				[4]u16 {
 					f32_to_f16(curve.p1.x),
 					f32_to_f16(curve.p1.y),
 					f32_to_f16(curve.p2.x),
@@ -243,7 +242,7 @@ pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 			band := &g.v_bands[bi]
 			append(
 				&result.band_data,
-				[2]u16{
+				[2]u16 {
 					band.curve_count,
 					u16(curve_list_base + u32(len(g.h_curve_lists)) + u32(band.data_offset)),
 				},

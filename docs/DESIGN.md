@@ -33,7 +33,7 @@ Backends (`slug/backends/*/`) are thin wrappers that take the core's output and 
 - Upload vertex data from `ctx.vertices[]`
 - Issue draw calls
 
-The OpenGL backend is ~580 lines (including the inline GLSL shaders). The Vulkan backend is larger (~1700 lines across two files) because Vulkan itself demands more boilerplate, but the slug-specific logic in each backend is still a small fraction of the total. A new backend for a modern API like Metal or WebGPU would likely land somewhere in between, since the hard work all happens in the core.
+The OpenGL backend is ~580 lines (including the inline GLSL shaders). The Vulkan backend is larger (~1700 lines across two files) because Vulkan itself demands more boilerplate, but the slug-specific logic in each backend is still a small fraction of the total. The Raylib backend (`slug/backends/raylib/`) demonstrates just how thin a wrapper can be: ~85 lines that wraps the OpenGL backend, handling the GL loader gotcha and Raylib batch flushing automatically. A new backend for a modern API like Metal or WebGPU would likely land somewhere in between, since the hard work all happens in the core.
 
 ### Why This Split Is Optimal
 
@@ -208,6 +208,8 @@ Without `gl.load_up_to(3, 3, glfw.gl_set_proc_address)` after `rl.InitWindow()`,
 This works because Raylib uses GLFW internally — the GLFW context already exists by the time `rl.InitWindow()` returns, so `glfw.gl_set_proc_address` can resolve GL functions from the same context.
 
 The `Renderer` struct must also be heap-allocated with `new()` — `slug.Context` contains a `[16384]Vertex` array (80 bytes each = ~1.3MB), which overflows the default stack.
+
+**If you use `slug/backends/raylib/`**, you don't need to worry about any of this. The Raylib backend calls `gl.load_up_to` during `init` and calls `rlgl.DrawRenderBatchActive` during `flush`, so both gotchas are handled automatically.
 
 ## Why stb_truetype (and its Limitations)
 

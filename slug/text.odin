@@ -126,21 +126,21 @@ emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: [
 	jac_00 := em_w / w if w > 0 else 0
 	jac_11 := -(em_h / h) if h > 0 else 0
 
-	corners := [4][2]f32{
-		{x, y},         // TL
-		{x + w, y},     // TR
+	corners := [4][2]f32 {
+		{x, y}, // TL
+		{x + w, y}, // TR
 		{x + w, y + h}, // BR
-		{x, y + h},     // BL
+		{x, y + h}, // BL
 	}
 
-	normals := [4][2]f32{
+	normals := [4][2]f32 {
 		{-DILATION_SCALE, -DILATION_SCALE},
-		{ DILATION_SCALE, -DILATION_SCALE},
-		{ DILATION_SCALE,  DILATION_SCALE},
-		{-DILATION_SCALE,  DILATION_SCALE},
+		{DILATION_SCALE, -DILATION_SCALE},
+		{DILATION_SCALE, DILATION_SCALE},
+		{-DILATION_SCALE, DILATION_SCALE},
 	}
 
-	em_coords := [4][2]f32{
+	em_coords := [4][2]f32 {
 		{em_min.x, em_max.y}, // TL in em-space (Y-up)
 		{em_max.x, em_max.y}, // TR
 		{em_max.x, em_min.y}, // BR
@@ -148,7 +148,7 @@ emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: [
 	}
 
 	for vi in 0 ..< 4 {
-		ctx.vertices[base + u32(vi)] = Vertex{
+		ctx.vertices[base + u32(vi)] = Vertex {
 			pos = {corners[vi].x, corners[vi].y, normals[vi].x, normals[vi].y},
 			tex = {em_coords[vi].x, em_coords[vi].y, glyph_loc, band_max},
 			jac = {jac_00, 0, 0, jac_11},
@@ -180,14 +180,14 @@ emit_glyph_quad_transformed :: proc(
 	glyph_loc := transmute(f32)(u32(g.band_tex_x) | (u32(g.band_tex_y) << 16))
 	band_max := transmute(f32)(u32(g.band_max_x) | (u32(g.band_max_y) << 16))
 
-	em_offsets := [4][2]f32{
+	em_offsets := [4][2]f32 {
 		{em_min.x - em_cx, em_max.y - em_cy},
 		{em_max.x - em_cx, em_max.y - em_cy},
 		{em_max.x - em_cx, em_min.y - em_cy},
 		{em_min.x - em_cx, em_min.y - em_cy},
 	}
 
-	em_coords := [4][2]f32{
+	em_coords := [4][2]f32 {
 		{em_min.x, em_max.y},
 		{em_max.x, em_max.y},
 		{em_max.x, em_min.y},
@@ -197,13 +197,13 @@ emit_glyph_quad_transformed :: proc(
 	det := xform[0, 0] * xform[1, 1] - xform[0, 1] * xform[1, 0]
 	inv_det := 1.0 / det if abs(det) > 1e-10 else 0.0
 	inv_jac := matrix[2, 2]f32{
-		 xform[1, 1] * inv_det, -xform[0, 1] * inv_det,
-		 xform[1, 0] * inv_det, -xform[0, 0] * inv_det,
+		xform[1, 1] * inv_det, -xform[0, 1] * inv_det, 
+		xform[1, 0] * inv_det, -xform[0, 0] * inv_det, 
 	}
 
 	for vi in 0 ..< 4 {
 		off := em_offsets[vi]
-		screen_off := [2]f32{
+		screen_off := [2]f32 {
 			xform[0, 0] * off.x + xform[0, 1] * (-off.y),
 			xform[1, 0] * off.x + xform[1, 1] * (-off.y),
 		}
@@ -216,7 +216,10 @@ emit_glyph_quad_transformed :: proc(
 			ny = ny / len_n * DILATION_SCALE
 		}
 
-		ctx.vertices[base + u32(vi)] = Vertex{
+		// Inverse Jacobian stored in row-major order matching the fragment shader's
+		// expected layout. Encodes the screen-to-em-space transform so the shader
+		// can compute correct antialiasing distances under rotation/skew.
+		ctx.vertices[base + u32(vi)] = Vertex {
 			pos = {center_x + screen_off.x, center_y + screen_off.y, nx, ny},
 			tex = {em_coords[vi].x, em_coords[vi].y, glyph_loc, band_max},
 			jac = {inv_jac[0, 0], inv_jac[0, 1], inv_jac[1, 0], inv_jac[1, 1]},
