@@ -2,7 +2,6 @@ package slug
 
 import "core:c"
 import "core:fmt"
-import "core:math"
 import "core:os"
 import stbtt "vendor:stb/truetype"
 

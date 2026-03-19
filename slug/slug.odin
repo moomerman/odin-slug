@@ -19,6 +19,7 @@ package slug
 // Backends (in separate packages) handle GPU upload and rendering:
 //   - slug/backends/vulkan  — Vulkan 1.x with GLSL 4.50 shaders
 //   - slug/backends/opengl  — OpenGL 3.3 (compatible with Raylib/rlgl)
+//   - slug/backends/raylib  — Raylib via rlgl
 //
 // Usage:
 //   1. Create a Context

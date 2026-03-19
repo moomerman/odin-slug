@@ -18,7 +18,6 @@ package main
 // ===================================================
 
 import "core:fmt"
-import "core:math"
 
 import sdl "vendor:sdl3"
 

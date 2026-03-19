@@ -287,7 +287,10 @@ upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_R
 		raw_data(pack.band_data),
 		band_data_size,
 	)
-	if !band_ok do return false
+	if !band_ok {
+		gpu_texture_destroy(r, &fi.curve_texture)
+		return false
+	}
 	fi.band_texture = band_tex
 
 	// Allocate descriptor set from the pool
@@ -301,6 +304,8 @@ upload_font_textures :: proc(r: ^Renderer, slot: int, pack: ^slug.Texture_Pack_R
 	result := vk.AllocateDescriptorSets(r.device, &alloc_info, &fi.descriptor_set)
 	if result != .SUCCESS {
 		fmt.eprintln("Failed to allocate descriptor set for font slot:", slot)
+		gpu_texture_destroy(r, &fi.band_texture)
+		gpu_texture_destroy(r, &fi.curve_texture)
 		return false
 	}
 
