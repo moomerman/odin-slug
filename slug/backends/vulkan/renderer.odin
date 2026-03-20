@@ -3,7 +3,6 @@ package slug_vulkan
 import "core:fmt"
 import "core:math/linalg"
 import "core:mem"
-import "core:os"
 import sdl "vendor:sdl3"
 import vk "vendor:vulkan"
 
@@ -98,21 +97,16 @@ Renderer :: struct {
 	// Font instances (GPU resources per font slot)
 	font_instances:        [slug.MAX_FONT_SLOTS]Font_Instance,
 
-	// Shader paths (override before calling init if needed)
-	vert_shader_path:      string,
-	frag_shader_path:      string,
 }
 
 // --- Public API ---
 
-VERT_SHADER_DEFAULT_PATH :: "slug/shaders/slug_vert.spv"
-FRAG_SHADER_DEFAULT_PATH :: "slug/shaders/slug_frag.spv"
+// SPIR-V bytecode embedded at compile time — no runtime file loading needed.
+VERT_SHADER_CODE :: #load("../../shaders/slug_vert.spv")
+FRAG_SHADER_CODE :: #load("../../shaders/slug_frag.spv")
 
 init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
 	r.window = window
-
-	if len(r.vert_shader_path) == 0 do r.vert_shader_path = VERT_SHADER_DEFAULT_PATH
-	if len(r.frag_shader_path) == 0 do r.frag_shader_path = FRAG_SHADER_DEFAULT_PATH
 
 	// Load Vulkan via SDL3
 	if !sdl.Vulkan_LoadLibrary(nil) {
@@ -981,25 +975,11 @@ create_descriptor_pool :: proc(r: ^Renderer) -> bool {
 
 @(private = "file")
 create_slug_pipeline :: proc(r: ^Renderer) -> bool {
-	vert_code, vert_err := os.read_entire_file(r.vert_shader_path, context.allocator)
-	if vert_err != nil {
-		fmt.eprintln("Failed to read slug vertex shader:", r.vert_shader_path)
-		return false
-	}
-	defer delete(vert_code)
-
-	frag_code, frag_err := os.read_entire_file(r.frag_shader_path, context.allocator)
-	if frag_err != nil {
-		fmt.eprintln("Failed to read slug fragment shader:", r.frag_shader_path)
-		return false
-	}
-	defer delete(frag_code)
-
-	vert_module, vert_ok := create_shader_module(r, vert_code)
+	vert_module, vert_ok := create_shader_module(r, VERT_SHADER_CODE)
 	if !vert_ok do return false
 	defer vk.DestroyShaderModule(r.device, vert_module, nil)
 
-	frag_module, frag_ok := create_shader_module(r, frag_code)
+	frag_module, frag_ok := create_shader_module(r, FRAG_SHADER_CODE)
 	if !frag_ok do return false
 	defer vk.DestroyShaderModule(r.device, frag_module, nil)
 

@@ -310,6 +310,28 @@ draw_text_shadow :: proc(
 	draw_text(ctx, text, x, y, font_size, color)
 }
 
+// --- Outlined text ---
+// Renders text with a colored outline for readability over busy backgrounds.
+// Draws the text 8 times at cardinal + diagonal offsets in the outline color,
+// then draws the fill on top. Uses 9 draw calls total per string.
+
+draw_text_outlined :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	color: Color,
+	outline_thickness: f32 = 1.5,
+	outline_color: Color = {0.0, 0.0, 0.0, 1.0},
+) {
+	t := outline_thickness
+	// 8 offsets: N, NE, E, SE, S, SW, W, NW
+	for off in ([8][2]f32{{0, -t}, {t, -t}, {t, 0}, {t, t}, {0, t}, {-t, t}, {-t, 0}, {-t, -t}}) {
+		draw_text(ctx, text, x + off.x, y + off.y, font_size, outline_color)
+	}
+	draw_text(ctx, text, x, y, font_size, color)
+}
+
 // --- Typewriter reveal ---
 // Shows characters one at a time based on elapsed time.
 

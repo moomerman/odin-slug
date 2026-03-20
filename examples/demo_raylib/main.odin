@@ -181,14 +181,15 @@ main :: proc() {
 			shadow_offset = 2.0,
 		)
 
-		// -- Description text --
-		slug.draw_text(
+		// -- Description text with outline --
+		slug.draw_text_outlined(
 			ctx,
 			"GPU Bezier text mixed with Raylib shapes.",
 			LEFT_MARGIN,
 			TOP_START + LINE_SPACING,
 			BODY_SIZE,
 			COLOR_CYAN,
+			outline_thickness = 1.5,
 		)
 
 		// -- Rainbow text over the panel --
