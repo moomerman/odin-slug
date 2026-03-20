@@ -143,7 +143,23 @@ main :: proc() {
 	defer slug.cache_destroy(&cached_label)
 
 	// -----------------------------------------------
-	// 5. Main game loop
+	// 5. Scroll region setup
+	// -----------------------------------------------
+
+	scroll_region := slug.Scroll_Region {
+		x      = 800,
+		y      = 540,
+		width  = 420,
+		height = 100,
+	}
+	SCROLL_TEXT :: "The ancient tome reveals: Long ago, the Skeleton King ruled these lands with an iron fist. His army of undead warriors swept across the countryside, destroying everything in their path. Only the legendary heroes of the Silver Order stood against him. After a great battle that lasted seven days and seven nights, the heroes sealed the Skeleton King in a crypt beneath the mountains. But the seal grows weak..."
+
+	// Cursor demo state
+	cursor_text := "Click to position cursor"
+	cursor_idx := 0
+
+	// -----------------------------------------------
+	// 6. Main game loop
 	// -----------------------------------------------
 
 	for !rl.WindowShouldClose() {
@@ -154,6 +170,22 @@ main :: proc() {
 		// UI scale with Up/Down arrow keys
 		if rl.IsKeyPressed(.UP) do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
 		if rl.IsKeyPressed(.DOWN) do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+
+		// Scroll region: mouse wheel when hovering
+		mouse_x := f32(rl.GetMouseX())
+		mouse_y := f32(rl.GetMouseY())
+		scroll_content_h := slug.measure_text_wrapped(ctx, SCROLL_TEXT, SMALL_SIZE, scroll_region.width)
+		if mouse_x >= scroll_region.x && mouse_x <= scroll_region.x + scroll_region.width &&
+		   mouse_y >= scroll_region.y && mouse_y <= scroll_region.y + scroll_region.height {
+			wheel := rl.GetMouseWheelMove()
+			if wheel != 0 {
+				slug.scroll_by(&scroll_region, -wheel * 20.0, scroll_content_h)
+			}
+		}
+
+		// Cursor positioning: Left/Right keys move cursor
+		if rl.IsKeyPressed(.LEFT) && cursor_idx > 0 do cursor_idx -= 1
+		if rl.IsKeyPressed(.RIGHT) && cursor_idx < len(cursor_text) do cursor_idx += 1
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{20, 20, 30, 255})
@@ -271,17 +303,10 @@ main :: proc() {
 		pulse_size := 60.0 + math.sin(elapsed * 1.5) * 20.0
 		slug.draw_text(ctx, "Zoom!", 800, 200, f32(pulse_size), {1.0, 0.5, 0.3, 1.0})
 
-		// -- Measurement API demo: manually positioned colored text segments --
+		// -- Rich text markup demo (replaces manual color segments) --
 		font := slug.active_font(ctx)
 		seg_y: f32 = 350
-		seg_x: f32 = LEFT_MARGIN
-		slug.draw_text(ctx, "You deal ", seg_x, seg_y, BODY_SIZE, COLOR_WHITE)
-		seg_w, _ := slug.measure_text(font, "You deal ", BODY_SIZE)
-		seg_x += seg_w
-		slug.draw_text(ctx, "15", seg_x, seg_y, BODY_SIZE, {1.0, 0.3, 0.3, 1.0})
-		dmg_w, _ := slug.measure_text(font, "15", BODY_SIZE)
-		seg_x += dmg_w
-		slug.draw_text(ctx, " damage!", seg_x, seg_y, BODY_SIZE, COLOR_WHITE)
+		slug.draw_rich_text(ctx, "You deal {red:15} damage with {yellow:Golden Sword}!", LEFT_MARGIN, seg_y, BODY_SIZE, COLOR_WHITE)
 
 		// -- Unicode demo --
 		slug.draw_text(ctx, "Héros: épée, château, naïve, über, señor", LEFT_MARGIN, seg_y + LINE_SPACING, SMALL_SIZE, {0.7, 0.7, 0.9, 1.0})
@@ -326,6 +351,31 @@ main :: proc() {
 		WRAP_PAD :: 8
 		text_h := slug.draw_text_wrapped(ctx, WRAP_TEXT, f32(WRAP_X + WRAP_PAD), f32(WRAP_Y + WRAP_PAD), SMALL_SIZE, WRAP_WIDTH - WRAP_PAD * 2, COLOR_WHITE)
 		rl.DrawRectangleLines(WRAP_X, WRAP_Y, i32(WRAP_WIDTH), i32(text_h) + WRAP_PAD * 2, rl.Color{80, 80, 120, 255})
+
+		// -- Scrollable text region (mouse wheel to scroll) --
+		rl.DrawRectangle(i32(scroll_region.x), i32(scroll_region.y), i32(scroll_region.width), i32(scroll_region.height), rl.Color{30, 30, 50, 255})
+		rl.DrawRectangleLines(i32(scroll_region.x), i32(scroll_region.y), i32(scroll_region.width), i32(scroll_region.height), rl.Color{80, 80, 120, 255})
+		slug.draw_text_scrolled(ctx, SCROLL_TEXT, &scroll_region, SMALL_SIZE, {0.8, 0.8, 0.9, 1.0})
+		// Scroll indicator
+		frac := slug.scroll_fraction(&scroll_region, scroll_content_h)
+		vis := slug.scroll_visible_fraction(&scroll_region, scroll_content_h)
+		thumb_h := i32(scroll_region.height * vis)
+		if thumb_h < 10 do thumb_h = 10
+		thumb_y := i32(scroll_region.y + frac * (scroll_region.height - f32(thumb_h)))
+		rl.DrawRectangle(i32(scroll_region.x + scroll_region.width - 4), thumb_y, 4, thumb_h, rl.Color{100, 100, 160, 200})
+		slug.draw_text(ctx, "Scroll me! [wheel]", scroll_region.x, scroll_region.y - 18, 14, {0.5, 0.5, 0.7, 1.0})
+
+		// -- Cursor positioning demo (Left/Right arrow keys) --
+		CURSOR_X :: f32(40)
+		CURSOR_Y :: f32(390)
+		slug.draw_text(ctx, cursor_text, CURSOR_X, CURSOR_Y, SMALL_SIZE, {0.7, 0.9, 0.7, 1.0})
+		cursor_px := slug.cursor_x_from_index(font, cursor_text, SMALL_SIZE, cursor_idx)
+		// Blinking cursor line
+		if int(elapsed * 2) % 2 == 0 {
+			cursor_screen_x := i32(CURSOR_X + cursor_px)
+			rl.DrawLine(cursor_screen_x, i32(CURSOR_Y) - 18, cursor_screen_x, i32(CURSOR_Y) + 4, rl.Color{200, 255, 200, 255})
+		}
+		slug.draw_text(ctx, fmt.tprintf("[</>] idx:%d", cursor_idx), CURSOR_X, CURSOR_Y + 20, 14, {0.5, 0.5, 0.5, 1.0})
 
 		// -- Multi-font demo: switch to serif for a line --
 		slug.use_font(ctx, 1)

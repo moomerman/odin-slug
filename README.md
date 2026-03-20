@@ -116,6 +116,8 @@ slug/                          Core library (package slug)
 ├── text.odin                  Text drawing, measurement, wrapping, vertex packing
 ├── effects.odin               Text effects (rainbow, wobble, shadow, outline, etc.)
 ├── cache.odin                 Static text caching for unchanged text
+├── scroll.odin                Scrollable text regions with viewport clipping
+├── richtext.odin              Rich text markup parsing and inline color rendering
 ├── shaders/                   GLSL shader source files
 │   ├── slug_330.vert/.frag    OpenGL 3.3
 │   └── slug_450.vert/.frag    Vulkan
@@ -165,6 +167,8 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `draw_cached(ctx, &cache)` | Draw cached text (memcopy, no processing) |
 | `draw_cached_at(ctx, &cache, x, y)` | Draw cached text at a different position |
 | `cache_destroy(&cache)` | Free cached vertex data |
+| `cursor_x_from_index(font, text, size, index)` | Pixel x-offset of cursor at character index |
+| `index_from_x(font, text, size, target_x)` | Character index closest to a pixel x-offset |
 | `get_glyph(font, ch)` | Look up a glyph by codepoint (nil if not loaded) |
 | `use_font(ctx, slot)` | Switch active font slot |
 | `active_font(ctx)` | Pointer to current font |
@@ -198,6 +202,28 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `draw_text_pulse(ctx, text, x, y, size, color, time)` | Per-character scale animation |
 | `draw_text_float(ctx, text, x, y, size, color, age)` | Rising + fading damage number (returns false when done) |
 | `draw_text_typewriter(ctx, text, x, y, size, color, time)` | Character-by-character reveal |
+
+### Scrollable Text (package slug)
+
+| Proc / Type | Purpose |
+|-------------|---------|
+| `Scroll_Region` | Struct: x, y, width, height, scroll_offset |
+| `draw_text_scrolled(ctx, text, &region, size, color)` | Draw wrapped text with viewport clipping (returns content height) |
+| `scroll_clamp(&region, content_height)` | Clamp scroll offset to valid range |
+| `scroll_by(&region, delta, content_height)` | Apply scroll delta with clamping |
+| `scroll_fraction(&region, content_height)` | Current scroll position as 0.0–1.0 |
+| `scroll_visible_fraction(&region, content_height)` | Visible content fraction (for scroll bar thumb size) |
+
+### Rich Text Markup (package slug)
+
+Inline color markup format: `{color_name:text}` or `{#rrggbb:text}`. Named colors: `red`, `green`, `blue`, `yellow`, `cyan`, `magenta`, `orange`, `white`, `black`, `gray`. Escaped brace: `{{`.
+
+| Proc | Purpose |
+|------|---------|
+| `draw_rich_text(ctx, text, x, y, size, default_color)` | Draw text with inline color markup (returns width) |
+| `measure_rich_text(font, text, size)` | Measure width/height with markup stripped |
+| `draw_rich_text_centered(ctx, text, x, y, size, default_color)` | Draw rich text centered at x |
+| `rich_text_plain_length(text)` | Plain text byte length with markup stripped |
 
 ### OpenGL Backend (package slug_opengl)
 
@@ -430,6 +456,10 @@ Built with **Claude Code** (Anthropic's Claude Opus). I provided direction, arch
 - [x] **UI scaling API** -- `set_ui_scale()` / `scaled_size()` for DPI awareness and accessibility
 - [x] **Static text caching** -- `cache_text()` / `draw_cached()` to skip per-frame vertex recomputation
 - [x] **Embedded Vulkan shaders** -- SPIR-V bytecode compiled into binary via `#load`, no runtime file dependencies
+
+- [x] **Text input cursor positioning** -- `cursor_x_from_index()` / `index_from_x()` for text fields and editors
+- [x] **Scrollable text regions** -- `draw_text_scrolled()` with viewport clipping and scroll utilities
+- [x] **Rich text markup** -- `draw_rich_text()` with inline `{color:text}` formatting for game UI
 
 ### Medium-term
 

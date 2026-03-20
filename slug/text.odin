@@ -79,6 +79,78 @@ measure_text :: proc(
 	return pen_x, (font.ascent - font.descent) * font_size
 }
 
+// Pixel x-offset of the cursor at the given character index.
+// index 0 = before the first character (left edge of the string).
+// index == rune_count = after the last character (right edge).
+// Returns 0 for out-of-range indices. Use with draw_text's x parameter:
+//   cursor_px := x + slug.cursor_x_from_index(font, text, size, cursor_idx)
+cursor_x_from_index :: proc(
+	font: ^Font,
+	text: string,
+	font_size: f32,
+	index: int,
+	use_kerning: bool = true,
+) -> f32 {
+	pen_x: f32 = 0
+	prev_rune: rune = 0
+	i := 0
+	for ch in text {
+		if i >= index do break
+		g := get_glyph(font, ch)
+		if g != nil {
+			if use_kerning && prev_rune != 0 {
+				pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+			}
+			pen_x += g.advance_width * font_size
+		}
+		prev_rune = ch
+		i += 1
+	}
+	return pen_x
+}
+
+// Character index closest to a pixel x-offset within rendered text.
+// Returns the index (0-based rune position) where a cursor should be
+// placed if the user clicks at target_x pixels from the string's left edge.
+// Snaps to the nearest character boundary (halfway = next character).
+index_from_x :: proc(
+	font: ^Font,
+	text: string,
+	font_size: f32,
+	target_x: f32,
+	use_kerning: bool = true,
+) -> int {
+	if target_x <= 0 do return 0
+
+	pen_x: f32 = 0
+	prev_rune: rune = 0
+	i := 0
+	for ch in text {
+		g := get_glyph(font, ch)
+		if g == nil {
+			prev_rune = ch
+			i += 1
+			continue
+		}
+
+		advance: f32 = 0
+		if use_kerning && prev_rune != 0 {
+			advance += font_get_kerning(font, prev_rune, ch) * font_size
+		}
+		advance += g.advance_width * font_size
+
+		// If target is within the first half of this character, cursor goes before it
+		if target_x < pen_x + advance * 0.5 {
+			return i
+		}
+
+		pen_x += advance
+		prev_rune = ch
+		i += 1
+	}
+	return i // past the end
+}
+
 // Draw a string of text at the given position and size.
 // x, y is the baseline-left position. font_size is the em-square height in pixels.
 draw_text :: proc(
