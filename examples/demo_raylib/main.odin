@@ -38,8 +38,12 @@ FONT_PATH :: "examples/assets/fonts/LiberationSans-Regular.ttf"
 
 ICON_SWORD :: 128
 ICON_HEART :: 129
+ICON_SHIELD :: 130
+ICON_CIRCLE :: 131
 ICON_SWORD_PATH :: "examples/assets/icons/sword.svg"
 ICON_HEART_PATH :: "examples/assets/icons/heart.svg"
+ICON_SHIELD_PATH :: "examples/assets/icons/shield.svg"
+ICON_CIRCLE_PATH :: "examples/assets/icons/circle.svg"
 
 // --- Layout constants ---
 
@@ -113,6 +117,8 @@ main :: proc() {
 		slug.font_load_ascii(&font)
 		slug.svg_load_into_font(&font, ICON_SWORD, ICON_SWORD_PATH)
 		slug.svg_load_into_font(&font, ICON_HEART, ICON_HEART_PATH)
+		slug.svg_load_into_font(&font, ICON_SHIELD, ICON_SHIELD_PATH)
+		slug.svg_load_into_font(&font, ICON_CIRCLE, ICON_CIRCLE_PATH)
 
 		pack := slug.font_process(&font)
 		defer slug.pack_result_destroy(&pack)
@@ -219,7 +225,9 @@ main :: proc() {
 		// -- SVG icons (rendered through the same GPU pipeline as text) --
 		slug.draw_icon(ctx, ICON_SWORD, 420, 460, ICON_SIZE, COLOR_YELLOW)
 		slug.draw_icon(ctx, ICON_HEART, 470, 460, ICON_SIZE, {1.0, 0.3, 0.3, 1.0})
-		slug.draw_text(ctx, "SVG icons!", 510, 448, SMALL_SIZE, COLOR_WHITE)
+		slug.draw_icon(ctx, ICON_SHIELD, 520, 460, ICON_SIZE, {0.3, 0.8, 0.4, 1.0})
+		slug.draw_icon(ctx, ICON_CIRCLE, 570, 460, ICON_SIZE, {0.5, 0.5, 1.0, 1.0})
+		slug.draw_text(ctx, "SVG icons!", 620, 448, SMALL_SIZE, COLOR_WHITE)
 
 		// -- Text around the circle --
 		slug.draw_text_on_circle(
