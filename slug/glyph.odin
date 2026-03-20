@@ -180,8 +180,7 @@ pack_glyph_textures :: proc(font: ^Font) -> (result: Texture_Pack_Result) {
 	band_x: u32 = 0
 	band_y: u32 = 0
 
-	for gi in 0 ..< MAX_CACHED_GLYPHS {
-		g := &font.glyphs[gi]
+	for _, &g in font.glyphs {
 		if !g.valid || len(g.curves) == 0 do continue
 
 		num_curve_texels := u32(len(g.curves) * 2)
@@ -324,10 +323,9 @@ f32_to_f16 :: proc(value: f32) -> u16 {
 // Process all valid glyphs in a font and pack textures.
 // Convenience proc that calls glyph_process on each glyph, then packs.
 font_process :: proc(font: ^Font) -> Texture_Pack_Result {
-	for gi in 0 ..< MAX_CACHED_GLYPHS {
-		g := &font.glyphs[gi]
+	for _, &g in font.glyphs {
 		if g.valid && len(g.curves) > 0 {
-			glyph_process(g)
+			glyph_process(&g)
 		}
 	}
 	return pack_glyph_textures(font)

@@ -70,16 +70,18 @@ svg_parse :: proc(svg_data: string) -> (icon: SVG_Icon, ok: bool) {
 // Load an SVG file and place it into a font's glyph slot.
 // Must be called BEFORE font_process / pack_glyph_textures.
 svg_load_into_font :: proc(font: ^Font, slot_index: int, path: string) -> bool {
-	if slot_index < 0 || slot_index >= MAX_CACHED_GLYPHS {
-		return false
-	}
-
 	icon, icon_ok := svg_load_icon(path)
 	if !icon_ok do return false
 
-	g := &font.glyphs[slot_index]
-	g^ = icon.glyph
-	g.codepoint = rune(slot_index)
+	// Initialize map on first use
+	if font.glyphs == nil {
+		font.glyphs = make(map[rune]Glyph_Data, INITIAL_GLYPH_CAPACITY)
+	}
+
+	key := rune(slot_index)
+	font.glyphs[key] = icon.glyph
+	g := &font.glyphs[key]
+	g.codepoint = key
 	g.valid = true
 
 	icon.glyph = {}

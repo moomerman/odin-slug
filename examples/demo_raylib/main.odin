@@ -115,6 +115,7 @@ main :: proc() {
 			return
 		}
 		slug.font_load_ascii(&font)
+		slug.font_load_range(&font, 160, 255) // Latin-1 Supplement (é, ñ, ü, etc.)
 		slug.svg_load_into_font(&font, ICON_SWORD, ICON_SWORD_PATH)
 		slug.svg_load_into_font(&font, ICON_HEART, ICON_HEART_PATH)
 		slug.svg_load_into_font(&font, ICON_SHIELD, ICON_SHIELD_PATH)
@@ -128,7 +129,17 @@ main :: proc() {
 	}
 
 	// -----------------------------------------------
-	// 4. Main game loop
+	// 4. Cache static text (created once, drawn every frame)
+	// -----------------------------------------------
+
+	// We need begin() active to emit quads into the vertex buffer.
+	// cache_text() saves and restores quad_count internally.
+	slug.begin(ctx)
+	cached_label := slug.cache_text(ctx, "Crisp at any size (cached)", f32(BOX_X + 15), f32(BOX_Y + 155), SMALL_SIZE, COLOR_YELLOW)
+	defer slug.cache_destroy(&cached_label)
+
+	// -----------------------------------------------
+	// 5. Main game loop
 	// -----------------------------------------------
 
 	for !rl.WindowShouldClose() {
@@ -218,15 +229,9 @@ main :: proc() {
 			amplitude = 5.0,
 		)
 
-		// -- Small text inside the panel --
-		slug.draw_text(
-			ctx,
-			"Crisp at any size",
-			f32(BOX_X + 15),
-			f32(BOX_Y + 155),
-			SMALL_SIZE,
-			COLOR_YELLOW,
-		)
+		// -- Cached static text inside the panel --
+		// No per-character processing — just a memcopy of pre-built vertices.
+		slug.draw_cached(ctx, &cached_label)
 
 		// -- SVG icons (rendered through the same GPU pipeline as text) --
 		slug.draw_icon(ctx, ICON_SWORD, 420, 460, ICON_SIZE, COLOR_YELLOW)
@@ -273,6 +278,9 @@ main :: proc() {
 		dmg_w, _ := slug.measure_text(font, "15", BODY_SIZE)
 		seg_x += dmg_w
 		slug.draw_text(ctx, " damage!", seg_x, seg_y, BODY_SIZE, COLOR_WHITE)
+
+		// -- Unicode demo --
+		slug.draw_text(ctx, "Héros: épée, château, naïve, über, señor", LEFT_MARGIN, seg_y + LINE_SPACING, SMALL_SIZE, {0.7, 0.7, 0.9, 1.0})
 
 		// -- Monospace grid demo --
 		// Each character is centered within a fixed-width cell,

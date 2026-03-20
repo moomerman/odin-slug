@@ -51,10 +51,8 @@ draw_text_rainbow :: proc(
 	char_idx := 0
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		hue := math.mod(time * speed + f32(char_idx) * spread, 360.0)
 		rgb := hsv_to_rgb(hue, 1.0, 1.0)
@@ -93,10 +91,8 @@ draw_text_wobble :: proc(
 	char_idx := 0
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		y_offset := math.sin(time * frequency + f32(char_idx) * phase_step) * amplitude
 
@@ -131,10 +127,8 @@ draw_text_shake :: proc(
 	char_idx := 0
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		seed := f32(char_idx) * 7.13 + time * 31.7
 		dx := math.sin(seed * 3.7) * intensity
@@ -180,10 +174,8 @@ draw_text_rotated :: proc(
 	pen_x: f32 = -total_w * 0.5
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		em_cx := (g.bbox_min.x + g.bbox_max.x) * 0.5
 		em_cy := (g.bbox_min.y + g.bbox_max.y) * 0.5
@@ -217,10 +209,8 @@ draw_text_on_circle :: proc(
 	pen_angle := start_angle
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		advance_arc := g.advance_width * font_size
 		char_angle := advance_arc / radius if abs(radius) > 1e-6 else 0
@@ -264,10 +254,8 @@ draw_text_on_wave :: proc(
 	freq := math.TAU / wavelength if abs(wavelength) > 1e-6 else 0
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS do continue
-		g := &font.glyphs[idx]
-		if !g.valid do continue
+		g := get_glyph(font, ch)
+		if g == nil do continue
 
 		wave_y := amplitude * math.sin(freq * pen_x + phase)
 		slope := amplitude * freq * math.cos(freq * pen_x + phase)

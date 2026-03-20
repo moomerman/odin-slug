@@ -40,11 +40,18 @@ font_load :: proc(path: string) -> (font: Font, ok: bool) {
 
 // Load a single glyph's outline and metrics.
 font_load_glyph :: proc(font: ^Font, codepoint: rune) -> bool {
-	idx := int(codepoint)
-	if idx < 0 || idx >= MAX_CACHED_GLYPHS do return false
+	// Already loaded?
+	if existing, ok := &font.glyphs[codepoint]; ok && existing.valid {
+		return true
+	}
 
-	g := &font.glyphs[idx]
-	if g.valid do return true
+	// Initialize map on first use
+	if font.glyphs == nil {
+		font.glyphs = make(map[rune]Glyph_Data, INITIAL_GLYPH_CAPACITY)
+	}
+
+	font.glyphs[codepoint] = {}
+	g := &font.glyphs[codepoint]
 
 	info := &font.info
 
@@ -127,14 +134,9 @@ font_load_glyph :: proc(font: ^Font, codepoint: rune) -> bool {
 
 // Get kerning adjustment between two glyphs (in em-space units).
 font_get_kerning :: proc(font: ^Font, left, right: rune) -> f32 {
-	left_idx := int(left)
-	right_idx := int(right)
-	if left_idx < 0 || left_idx >= MAX_CACHED_GLYPHS do return 0
-	if right_idx < 0 || right_idx >= MAX_CACHED_GLYPHS do return 0
-
-	gl := &font.glyphs[left_idx]
-	gr := &font.glyphs[right_idx]
-	if !gl.valid || !gr.valid do return 0
+	gl := get_glyph(font, left)
+	gr := get_glyph(font, right)
+	if gl == nil || gr == nil do return 0
 
 	kern_raw := stbtt.GetGlyphKernAdvance(&font.info, c.int(gl.glyph_index), c.int(gr.glyph_index))
 	return f32(kern_raw) * font.em_scale
@@ -142,8 +144,20 @@ font_get_kerning :: proc(font: ^Font, left, right: rune) -> f32 {
 
 // Load all ASCII printable glyphs (32-126).
 font_load_ascii :: proc(font: ^Font) -> int {
+	return font_load_range(font, 32, 126)
+}
+
+// Load all glyphs in a codepoint range (inclusive).
+// Returns the number of glyphs successfully loaded.
+// Common ranges:
+//   Latin-1 Supplement: 160–255 (accented characters: é, ñ, ü, etc.)
+//   Latin Extended-A:   256–383 (Ş, ž, Ő, etc.)
+//   Greek:              880–1023
+//   Cyrillic:           1024–1279
+//   Box Drawing:        9472–9599
+font_load_range :: proc(font: ^Font, first, last: rune) -> int {
 	loaded := 0
-	for cp := rune(32); cp <= 126; cp += 1 {
+	for cp := first; cp <= last; cp += 1 {
 		if font_load_glyph(font, cp) {
 			loaded += 1
 		}

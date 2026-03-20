@@ -16,7 +16,9 @@ Slug skips rasterization entirely. The GPU evaluates the actual Bezier curves of
 - **SVG vector icons** -- parse SVG paths into the same GPU pipeline as text
 - **Text measurement** -- per-character, per-string, monospace grid, and line height helpers
 - **Text wrapping** -- automatic word breaking for UI panels with height return for layout
-- **Text effects** -- rainbow, wobble, shake, rotation, circular, wave, shadow, typewriter
+- **Text effects** -- rainbow, wobble, shake, rotation, circular, wave, shadow, outline, typewriter
+- **Static text caching** -- cache vertex data for unchanged text, draw with a single memcopy
+- **UI scaling** -- global scale factor for DPI awareness and accessibility
 - **Kerning** -- automatic kern pair adjustment
 - **Multi-font** -- up to 4 fonts loaded simultaneously, batched draw calls
 - **GPU-agnostic core** -- backends for OpenGL 3.3, Raylib, and Vulkan
@@ -110,7 +112,8 @@ slug/                          Core library (package slug)
 ├── glyph.odin                 Band acceleration, texture packing, f16
 ├── svg.odin                   SVG path parser, icon loading
 ├── text.odin                  Text drawing, measurement, wrapping, vertex packing
-├── effects.odin               Text effects (rainbow, wobble, shadow, etc.)
+├── effects.odin               Text effects (rainbow, wobble, shadow, outline, etc.)
+├── cache.odin                 Static text caching for unchanged text
 ├── shaders/                   GLSL shader source files
 │   ├── slug_330.vert/.frag    OpenGL 3.3
 │   └── slug_450.vert/.frag    Vulkan
@@ -150,12 +153,21 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `char_advance(font, ch, size)` | Advance width of a single character |
 | `line_height(font, size)` | Vertical distance between text lines |
 | `mono_width(font, size)` | Fixed cell width for grid-aligned layouts |
+| `snap(v)` | Round coordinate to nearest pixel for grid alignment |
+| `set_ui_scale(ctx, scale)` | Set global UI scale factor (1.0 = default) |
+| `scaled_size(ctx, size)` | Apply UI scale to a logical font size |
+| `cache_text(ctx, text, x, y, size, color)` | Cache vertex data for static text |
+| `draw_cached(ctx, &cache)` | Draw cached text (memcopy, no processing) |
+| `draw_cached_at(ctx, &cache, x, y)` | Draw cached text at a different position |
+| `cache_destroy(&cache)` | Free cached vertex data |
+| `get_glyph(font, ch)` | Look up a glyph by codepoint (nil if not loaded) |
 | `use_font(ctx, slot)` | Switch active font slot |
 | `active_font(ctx)` | Pointer to current font |
 | `vertex_count(ctx)` | Vertices written this frame |
 | `font_load(path)` | Load a TTF file |
 | `font_load_with_icons(path, icons)` | Load font + ASCII + SVG icons + process (all-in-one) |
 | `font_load_ascii(font)` | Load glyphs 32-126 |
+| `font_load_range(font, first, last)` | Load all glyphs in a codepoint range |
 | `font_load_glyph(font, codepoint)` | Load a single glyph |
 | `font_get_kerning(font, left, right)` | Kerning adjustment between two glyphs |
 | `font_process(font)` | Process glyphs + pack textures |
@@ -175,6 +187,7 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `draw_text_on_circle(ctx, text, cx, cy, radius, angle, size, color)` | Along circular path |
 | `draw_text_on_wave(ctx, text, x, y, size, amplitude, wavelength, phase, color)` | Along sine wave |
 | `draw_text_shadow(ctx, text, x, y, size, color)` | Drop shadow beneath text |
+| `draw_text_outlined(ctx, text, x, y, size, color)` | Colored outline for readability over busy backgrounds |
 | `draw_text_typewriter(ctx, text, x, y, size, color, time)` | Character-by-character reveal |
 
 ### OpenGL Backend (package slug_opengl)
@@ -343,6 +356,7 @@ odin build examples/demo_vulkan/ -out:demo_vulkan -collection:libs=.
 | Input | Action |
 |-------|--------|
 | ESC | Quit (all demos) |
+| Up/Down | Adjust UI scale (Raylib demo) |
 
 ### Platform Notes
 
@@ -400,14 +414,15 @@ Built with **Claude Code** (Anthropic's Claude Opus). I provided direction, arch
 ### Near-term
 
 - [x] **Text wrapping** -- `draw_text_wrapped()` with automatic word breaking for UI panels and dialogue
-- [ ] **Outlined text** -- dilated quads for outline/stroke (similar to existing drop shadow)
-- [ ] **UI scaling API** -- uniform scale factor for all text (accessibility, HiDPI)
-- [ ] **Static text caching** -- skip re-emitting vertices for unchanged text between frames
+- [x] **Outlined text** -- `draw_text_outlined()` with configurable thickness and color
+- [x] **UI scaling API** -- `set_ui_scale()` / `scaled_size()` for DPI awareness and accessibility
+- [x] **Static text caching** -- `cache_text()` / `draw_cached()` to skip per-frame vertex recomputation
+- [x] **Embedded Vulkan shaders** -- SPIR-V bytecode compiled into binary via `#load`, no runtime file dependencies
 
 ### Medium-term
 
-- [ ] **Unicode beyond ASCII** -- on-demand glyph loading for codepoints > 255 (currently `MAX_CACHED_GLYPHS = 256`)
-- [ ] **Subpixel positioning** -- fractional pixel offsets for tighter character spacing
+- [x] **Unicode support** -- glyph map keyed by `rune`, any codepoint loadable via `font_load_glyph`
+- [x] **Pixel snapping** -- `snap()` helper for pixel-grid alignment; subpixel positioning works naturally via Bezier evaluation
 - [ ] **Shared font atlases** -- pack multiple fonts into shared curve/band textures to cut texture binds
 - [ ] **WebGPU backend** -- for browser-based Odin projects via wasm
 

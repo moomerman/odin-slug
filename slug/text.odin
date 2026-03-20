@@ -9,15 +9,23 @@ import "core:math"
 // The backend reads the vertex data and uploads/draws it.
 // ===================================================
 
+// Snap a coordinate to the nearest pixel boundary.
+// Use this for grid-aligned UIs where you want pixel-perfect text:
+//   slug.draw_text(ctx, "HP: 100", slug.snap(x), slug.snap(y), size, color)
+// Slug renders Bezier curves per-pixel, so subpixel positioning works
+// naturally without quality loss. Snapping is optional and purely for
+// alignment with pixel-grid elements like tile maps or UI panels.
+snap :: proc(v: f32) -> f32 {
+	return math.round(v)
+}
+
 // Advance width of a single character in pixels.
 // This is how far the pen moves after drawing the character — use it
 // for manual text layout and positioning. Returns 0 if the glyph isn't loaded.
 // For kerning between character pairs, use font_get_kerning separately.
 char_advance :: proc(font: ^Font, ch: rune, font_size: f32) -> f32 {
-	idx := int(ch)
-	if idx < 0 || idx >= MAX_CACHED_GLYPHS do return 0
-	g := &font.glyphs[idx]
-	if !g.valid do return 0
+	g := get_glyph(font, ch)
+	if g == nil do return 0
 	return g.advance_width * font_size
 }
 
@@ -36,7 +44,7 @@ line_height :: proc(font: ^Font, font_size: f32) -> f32 {
 // fonts just get wider cells.
 mono_width :: proc(font: ^Font, font_size: f32) -> f32 {
 	max_advance: f32 = 0
-	for &g in font.glyphs {
+	for _, &g in font.glyphs {
 		if g.valid && g.advance_width > max_advance {
 			max_advance = g.advance_width
 		}
@@ -57,13 +65,8 @@ measure_text :: proc(
 	pen_x: f32 = 0
 	prev_rune: rune = 0
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS {
-			prev_rune = ch
-			continue
-		}
-		g := &font.glyphs[idx]
-		if !g.valid {
+		g := get_glyph(font, ch)
+		if g == nil {
 			prev_rune = ch
 			continue
 		}
@@ -92,14 +95,8 @@ draw_text :: proc(
 	prev_rune: rune = 0
 
 	for ch in text {
-		idx := int(ch)
-		if idx < 0 || idx >= MAX_CACHED_GLYPHS {
-			prev_rune = ch
-			continue
-		}
-
-		g := &font.glyphs[idx]
-		if !g.valid {
+		g := get_glyph(font, ch)
+		if g == nil {
 			prev_rune = ch
 			continue
 		}
@@ -212,9 +209,8 @@ draw_text_wrapped :: proc(
 // icon_index is the glyph slot (use 128+ to avoid ASCII collision).
 draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: Color) {
 	font := active_font(ctx)
-	if icon_index < 0 || icon_index >= MAX_CACHED_GLYPHS do return
-	g := &font.glyphs[icon_index]
-	if !g.valid || len(g.curves) == 0 do return
+	g := get_glyph(font, rune(icon_index))
+	if g == nil || len(g.curves) == 0 do return
 
 	glyph_w := (g.bbox_max.x - g.bbox_min.x) * size
 	glyph_h := (g.bbox_max.y - g.bbox_min.y) * size

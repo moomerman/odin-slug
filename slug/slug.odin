@@ -39,8 +39,9 @@ import stbtt "vendor:stb/truetype"
 BAND_TEXTURE_WIDTH_LOG2 :: 12
 BAND_TEXTURE_WIDTH :: 1 << BAND_TEXTURE_WIDTH_LOG2 // 4096
 
-// Maximum number of cached glyphs per font (ASCII + extended + icons)
-MAX_CACHED_GLYPHS :: 256
+// Initial capacity for the per-font glyph map.
+// Not a hard limit — the map grows as needed for any Unicode codepoint.
+INITIAL_GLYPH_CAPACITY :: 256
 
 // Maximum glyph quads per frame (one quad per visible glyph instance)
 MAX_GLYPH_QUADS :: 4096
@@ -135,8 +136,8 @@ Font :: struct {
 	line_gap:  f32,
 	em_scale:  f32, // 1.0 / units_per_em
 
-	// Glyph cache indexed by codepoint
-	glyphs:    [MAX_CACHED_GLYPHS]Glyph_Data,
+	// Glyph cache keyed by codepoint (supports any Unicode codepoint)
+	glyphs:    map[rune]Glyph_Data,
 }
 
 // --- Core Context ---
@@ -242,6 +243,13 @@ vertex_count :: proc(ctx: ^Context) -> u32 {
 	return ctx.quad_count * VERTICES_PER_QUAD
 }
 
+// Look up a glyph by codepoint. Returns nil if not loaded.
+get_glyph :: proc(font: ^Font, ch: rune) -> ^Glyph_Data {
+	g, ok := &font.glyphs[ch]
+	if !ok || !g.valid do return nil
+	return g
+}
+
 // --- Cleanup ---
 
 glyph_data_destroy :: proc(g: ^Glyph_Data) {
@@ -254,9 +262,10 @@ glyph_data_destroy :: proc(g: ^Glyph_Data) {
 }
 
 font_destroy :: proc(font: ^Font) {
-	for &g in font.glyphs {
+	for _, &g in font.glyphs {
 		glyph_data_destroy(&g)
 	}
+	delete(font.glyphs)
 	delete(font.font_data)
 	font^ = {}
 }
