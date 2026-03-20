@@ -16,7 +16,6 @@ package slug_opengl
 //        flush(&r, width, height)
 // ===================================================
 
-import "core:fmt"
 import "core:math/linalg"
 import gl "vendor:OpenGL"
 
@@ -293,10 +292,7 @@ ATTRIB_COUNT :: 5
 init :: proc(r: ^Renderer) -> bool {
 	// Compile and link shader program
 	program, program_ok := gl.load_shaders_source(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE)
-	if !program_ok {
-		fmt.eprintln("slug_opengl: failed to compile shaders")
-		return false
-	}
+	if !program_ok do return false
 	r.program = program
 
 	// Cache uniform locations
@@ -359,26 +355,17 @@ init :: proc(r: ^Renderer) -> bool {
 // ===================================================
 
 load_font :: proc(r: ^Renderer, slot: int, path: string) -> bool {
-	if slot < 0 || slot >= slug.MAX_FONT_SLOTS {
-		fmt.eprintln("slug_opengl: invalid font slot", slot)
-		return false
-	}
+	if slot < 0 || slot >= slug.MAX_FONT_SLOTS do return false
 
 	// Load font via slug core
 	font, font_ok := slug.font_load(path)
-	if !font_ok {
-		fmt.eprintln("slug_opengl: failed to load font:", path)
-		return false
-	}
+	if !font_ok do return false
 
 	slug.register_font(&r.ctx, slot, font)
 
 	// Load ASCII glyphs and process into texture data
 	loaded := slug.font_load_ascii(&r.ctx.fonts[slot])
-	if loaded == 0 {
-		fmt.eprintln("slug_opengl: no glyphs loaded from font:", path)
-		return false
-	}
+	if loaded == 0 do return false
 
 	pack := slug.font_process(&r.ctx.fonts[slot])
 	defer slug.pack_result_destroy(&pack)

@@ -256,6 +256,42 @@ main :: proc() {
 		pulse_size := 60.0 + math.sin(elapsed * 1.5) * 20.0
 		slug.draw_text(ctx, "Zoom!", 800, 200, f32(pulse_size), {1.0, 0.5, 0.3, 1.0})
 
+		// -- Measurement API demo: manually positioned colored text segments --
+		font := slug.active_font(ctx)
+		seg_y: f32 = 350
+		seg_x: f32 = LEFT_MARGIN
+		slug.draw_text(ctx, "You deal ", seg_x, seg_y, BODY_SIZE, COLOR_WHITE)
+		seg_w, _ := slug.measure_text(font, "You deal ", BODY_SIZE)
+		seg_x += seg_w
+		slug.draw_text(ctx, "15", seg_x, seg_y, BODY_SIZE, {1.0, 0.3, 0.3, 1.0})
+		dmg_w, _ := slug.measure_text(font, "15", BODY_SIZE)
+		seg_x += dmg_w
+		slug.draw_text(ctx, " damage!", seg_x, seg_y, BODY_SIZE, COLOR_WHITE)
+
+		// -- Monospace grid demo --
+		// Each character is centered within a fixed-width cell,
+		// so even proportional fonts align to a grid.
+		cell_w := slug.mono_width(font, SMALL_SIZE)
+		grid_x: f32 = 800
+		grid_y: f32 = 350
+		grid_text := "GRID"
+		for ch, i in grid_text {
+			ch_w := slug.char_advance(font, ch, SMALL_SIZE)
+			char_x := grid_x + f32(i) * cell_w + (cell_w - ch_w) * 0.5
+			slug.draw_text(ctx, grid_text[i:][:1], char_x, grid_y, SMALL_SIZE, COLOR_CYAN)
+		}
+		slug.draw_text(ctx, fmt.tprintf("cell: %.1fpx", cell_w), grid_x, grid_y + 25, SMALL_SIZE, {0.5, 0.5, 0.5, 1.0})
+
+		// -- Word wrap demo --
+		// draw_text_wrapped returns total height, so we can size the box to fit.
+		WRAP_TEXT :: "The ancient scroll reads: You have defeated the Skeleton King and earned 250 gold. Your sword glows with newfound power."
+		WRAP_X :: 800
+		WRAP_Y :: 420
+		WRAP_WIDTH :: f32(420)
+		WRAP_PAD :: 8
+		text_h := slug.draw_text_wrapped(ctx, WRAP_TEXT, f32(WRAP_X + WRAP_PAD), f32(WRAP_Y + WRAP_PAD), SMALL_SIZE, WRAP_WIDTH - WRAP_PAD * 2, COLOR_WHITE)
+		rl.DrawRectangleLines(WRAP_X, WRAP_Y, i32(WRAP_WIDTH), i32(text_h) + WRAP_PAD * 2, rl.Color{80, 80, 120, 255})
+
 		// Finalize and draw.
 		slug.end(ctx)
 		slug_rl.flush(renderer, screen_w, screen_h)

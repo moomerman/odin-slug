@@ -46,8 +46,17 @@ Renderer :: struct {
 // Loads Odin's vendor:OpenGL function pointers from the
 // already-active GL context, then sets up the slug shader,
 // VAO, VBO, and EBO.
+// Returns false if GL function pointers couldn't be loaded
+// (usually means rl.InitWindow() wasn't called first).
 init :: proc(r: ^Renderer) -> bool {
 	gl.load_up_to(3, 3, gl_set_proc_address)
+
+	// Verify GL is actually available — if InitWindow() wasn't called,
+	// all function pointers will be nil and slug_gl.init will segfault.
+	if gl.CreateShader == nil {
+		return false
+	}
+
 	return slug_gl.init(&r.gl_renderer)
 }
 

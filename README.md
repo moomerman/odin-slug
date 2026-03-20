@@ -14,6 +14,8 @@ Slug skips rasterization entirely. The GPU evaluates the actual Bezier curves of
 
 - **Resolution-independent text** -- crisp at any size, rotation, or zoom
 - **SVG vector icons** -- parse SVG paths into the same GPU pipeline as text
+- **Text measurement** -- per-character, per-string, monospace grid, and line height helpers
+- **Text wrapping** -- automatic word breaking for UI panels with height return for layout
 - **Text effects** -- rainbow, wobble, shake, rotation, circular, wave, shadow, typewriter
 - **Kerning** -- automatic kern pair adjustment
 - **Multi-font** -- up to 4 fonts loaded simultaneously, batched draw calls
@@ -107,7 +109,7 @@ slug/                          Core library (package slug)
 ├── ttf.odin                   TTF loading, glyph extraction, kerning
 ├── glyph.odin                 Band acceleration, texture packing, f16
 ├── svg.odin                   SVG path parser, icon loading
-├── text.odin                  draw_text, measure_text, vertex packing
+├── text.odin                  Text drawing, measurement, wrapping, vertex packing
 ├── effects.odin               Text effects (rainbow, wobble, shadow, etc.)
 ├── shaders/                   GLSL shader source files
 │   ├── slug_330.vert/.frag    OpenGL 3.3
@@ -135,13 +137,19 @@ docs/
 
 ### Core (package slug)
 
+All text drawing, measurement, wrapping, and effects live in the core package. They work identically across all backends -- the core never touches the GPU.
+
 | Proc | Purpose |
 |------|---------|
 | `begin(ctx)` | Reset quad counter for new frame |
 | `end(ctx)` | Finalize per-font quad ranges |
 | `draw_text(ctx, text, x, y, size, color)` | Draw a string at baseline position |
+| `draw_text_wrapped(ctx, text, x, y, size, max_width, color)` | Draw with word wrapping, returns total height |
 | `draw_icon(ctx, slot, x, y, size, color)` | Draw an SVG icon centered at position |
 | `measure_text(font, text, size)` | Returns pixel width and height |
+| `char_advance(font, ch, size)` | Advance width of a single character |
+| `line_height(font, size)` | Vertical distance between text lines |
+| `mono_width(font, size)` | Fixed cell width for grid-aligned layouts |
 | `use_font(ctx, slot)` | Switch active font slot |
 | `active_font(ctx)` | Pointer to current font |
 | `vertex_count(ctx)` | Vertices written this frame |
@@ -269,7 +277,7 @@ slug.svg_load_into_font(&font, 129, "icons/sword.svg")
 slug.draw_icon(ctx, 128, x, y, 48.0, {1, 1, 1, 1})
 ```
 
-Supports SVG path commands: M, L, H, V, C, S, Q, T, Z (and lowercase relative variants). Cubic Beziers are subdivided into quadratic approximations.
+Supports all SVG path commands: M, L, H, V, C, S, Q, T, A, Z (and lowercase relative variants). Cubic Beziers are subdivided into quadratic approximations. Arc commands (A/a) are converted to cubic Beziers via the SVG spec F.6 formulas.
 
 ## Building
 
@@ -391,7 +399,7 @@ Built with **Claude Code** (Anthropic's Claude Opus). I provided direction, arch
 
 ### Near-term
 
-- [ ] **Text wrapping** -- line breaking via `measure_text()` for UI panels and dialogue
+- [x] **Text wrapping** -- `draw_text_wrapped()` with automatic word breaking for UI panels and dialogue
 - [ ] **Outlined text** -- dilated quads for outline/stroke (similar to existing drop shadow)
 - [ ] **UI scaling API** -- uniform scale factor for all text (accessibility, HiDPI)
 - [ ] **Static text caching** -- skip re-emitting vertices for unchanged text between frames

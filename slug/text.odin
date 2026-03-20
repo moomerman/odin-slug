@@ -9,6 +9,41 @@ import "core:math"
 // The backend reads the vertex data and uploads/draws it.
 // ===================================================
 
+// Advance width of a single character in pixels.
+// This is how far the pen moves after drawing the character — use it
+// for manual text layout and positioning. Returns 0 if the glyph isn't loaded.
+// For kerning between character pairs, use font_get_kerning separately.
+char_advance :: proc(font: ^Font, ch: rune, font_size: f32) -> f32 {
+	idx := int(ch)
+	if idx < 0 || idx >= MAX_CACHED_GLYPHS do return 0
+	g := &font.glyphs[idx]
+	if !g.valid do return 0
+	return g.advance_width * font_size
+}
+
+// Vertical distance between text lines in pixels.
+// Includes the font's line gap for proper inter-line spacing.
+// Computed from the font's ascent, descent, and line gap metrics —
+// consistent regardless of which characters are drawn.
+line_height :: proc(font: ^Font, font_size: f32) -> f32 {
+	return (font.ascent - font.descent + font.line_gap) * font_size
+}
+
+// Fixed cell width for monospace-style layouts in pixels.
+// Returns the widest loaded glyph's advance width, which can be
+// used as a uniform cell width for grid-aligned text (roguelike maps,
+// stat columns, fixed-width UI). Works with any font — proportional
+// fonts just get wider cells.
+mono_width :: proc(font: ^Font, font_size: f32) -> f32 {
+	max_advance: f32 = 0
+	for &g in font.glyphs {
+		if g.valid && g.advance_width > max_advance {
+			max_advance = g.advance_width
+		}
+	}
+	return max_advance * font_size
+}
+
 // Measure a string's pixel dimensions at the given font size.
 measure_text :: proc(
 	font: ^Font,
@@ -87,6 +122,90 @@ draw_text :: proc(
 		pen_x += g.advance_width * font_size
 		prev_rune = ch
 	}
+}
+
+// Draw text with automatic word wrapping within max_width pixels.
+// Breaks on spaces and newlines. Words wider than max_width are
+// drawn on their own line without breaking mid-word.
+// x, y is the top-left corner of the text block (not the baseline).
+// Returns the total height used, so the caller can position
+// content below: next_y = y + draw_text_wrapped(...).
+draw_text_wrapped :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	max_width: f32,
+	color: Color,
+	use_kerning: bool = true,
+) -> f32 {
+	font := active_font(ctx)
+	lh := line_height(font, font_size)
+	space_w := char_advance(font, ' ', font_size)
+
+	// Height of a single text line (ascent - descent), without inter-line gap.
+	// Used for the return value — the total bounding height of the text block.
+	text_line_h := (font.ascent - font.descent) * font_size
+
+	// Offset so y is the top of the text block, not the baseline.
+	// draw_text expects y at the top of the glyph's em square, which
+	// is ascent above the baseline.
+	ascent_px := font.ascent * font_size
+
+	pen_x: f32 = 0
+	pen_y: f32 = ascent_px
+
+	// Walk through the text, splitting on spaces and newlines
+	i := 0
+	for i < len(text) {
+		// Handle newlines
+		if text[i] == '\n' {
+			pen_x = 0
+			pen_y += lh
+			i += 1
+			continue
+		}
+
+		// Skip spaces at line start
+		if text[i] == ' ' && pen_x == 0 {
+			i += 1
+			continue
+		}
+
+		// Find the next word (run of non-space, non-newline characters)
+		word_start := i
+		for i < len(text) && text[i] != ' ' && text[i] != '\n' {
+			i += 1
+		}
+		word := text[word_start:i]
+
+		word_w, _ := measure_text(font, word, font_size, use_kerning)
+
+		// Wrap if this word would exceed max_width (unless it's the first word on the line)
+		if pen_x > 0 && pen_x + space_w + word_w > max_width {
+			pen_x = 0
+			pen_y += lh
+		}
+
+		// Add space between words on the same line
+		if pen_x > 0 {
+			pen_x += space_w
+		}
+
+		// Draw the word
+		draw_text(ctx, word, x + pen_x, y + pen_y, font_size, color, use_kerning)
+		pen_x += word_w
+
+		// Skip trailing space after word
+		if i < len(text) && text[i] == ' ' {
+			i += 1
+		}
+	}
+
+	// Return total height from the top of the text block.
+	// pen_y already includes the initial ascent offset, so subtract it
+	// and add back the full text line height for the last line.
+	return pen_y - ascent_px + text_line_h
 }
 
 // Draw an SVG icon centered at the given screen position.
