@@ -102,8 +102,8 @@ Renderer :: struct {
 // --- Public API ---
 
 // SPIR-V bytecode embedded at compile time — no runtime file loading needed.
-VERT_SHADER_CODE :: #load("../../shaders/slug_vert.spv")
-FRAG_SHADER_CODE :: #load("../../shaders/slug_frag.spv")
+VERT_SHADER_CODE :: #load("slug_vert.spv")
+FRAG_SHADER_CODE :: #load("slug_frag.spv")
 
 init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
 	r.window = window

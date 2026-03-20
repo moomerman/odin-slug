@@ -189,7 +189,8 @@ main :: proc() {
 			TOP_START + LINE_SPACING,
 			BODY_SIZE,
 			COLOR_CYAN,
-			outline_thickness = 1.5,
+			outline_thickness = 2.5,
+			outline_color = {0.8, 0.2, 0.8, 1.0},
 		)
 
 		// -- Rainbow text over the panel --
