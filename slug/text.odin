@@ -235,6 +235,59 @@ draw_text_wrapped :: proc(
 	return pen_y - ascent_px + text_line_h
 }
 
+// Measure wrapped text height without drawing.
+// Returns the total height the text block would occupy, so you can
+// size a background box before drawing the text on top.
+measure_text_wrapped :: proc(
+	ctx: ^Context,
+	text: string,
+	font_size: f32,
+	max_width: f32,
+	use_kerning: bool = true,
+) -> f32 {
+	font := active_font(ctx)
+	lh := line_height(font, font_size)
+	space_w := char_advance(font, ' ', font_size)
+	text_line_h := (font.ascent - font.descent) * font_size
+
+	pen_x: f32 = 0
+	pen_y: f32 = 0
+
+	i := 0
+	for i < len(text) {
+		if text[i] == '\n' {
+			pen_x = 0
+			pen_y += lh
+			i += 1
+			continue
+		}
+		if text[i] == ' ' && pen_x == 0 {
+			i += 1
+			continue
+		}
+		word_start := i
+		for i < len(text) && text[i] != ' ' && text[i] != '\n' {
+			i += 1
+		}
+		word := text[word_start:i]
+		word_w, _ := measure_text(font, word, font_size, use_kerning)
+
+		if pen_x > 0 && pen_x + space_w + word_w > max_width {
+			pen_x = 0
+			pen_y += lh
+		}
+		if pen_x > 0 {
+			pen_x += space_w
+		}
+		pen_x += word_w
+		if i < len(text) && text[i] == ' ' {
+			i += 1
+		}
+	}
+
+	return pen_y + text_line_h
+}
+
 // Draw an SVG icon centered at the given screen position.
 // icon_index is the glyph slot (use 128+ to avoid ASCII collision).
 draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: Color) {

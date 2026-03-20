@@ -154,6 +154,7 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `draw_text_wrapped(ctx, text, x, y, size, max_width, color)` | Draw with word wrapping, returns total height |
 | `draw_icon(ctx, slot, x, y, size, color)` | Draw an SVG icon centered at position |
 | `measure_text(font, text, size)` | Returns pixel width and height |
+| `measure_text_wrapped(ctx, text, size, max_width)` | Height of wrapped text (for sizing boxes before drawing) |
 | `char_advance(font, ch, size)` | Advance width of a single character |
 | `line_height(font, size)` | Vertical distance between text lines |
 | `mono_width(font, size)` | Fixed cell width for grid-aligned layouts |
@@ -195,6 +196,7 @@ All text drawing, measurement, wrapping, and effects live in the core package. T
 | `draw_text_fade(ctx, text, x, y, size, color, alpha)` | Alpha fade (floating damage, toasts) |
 | `draw_text_gradient(ctx, text, x, y, size, top, bottom)` | Per-character top-to-bottom color blend |
 | `draw_text_pulse(ctx, text, x, y, size, color, time)` | Per-character scale animation |
+| `draw_text_float(ctx, text, x, y, size, color, age)` | Rising + fading damage number (returns false when done) |
 | `draw_text_typewriter(ctx, text, x, y, size, color, time)` | Character-by-character reveal |
 
 ### OpenGL Backend (package slug_opengl)

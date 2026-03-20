@@ -300,6 +300,23 @@ main :: proc() {
 		}
 		slug.draw_text(ctx, fmt.tprintf("cell: %.1fpx", cell_w), grid_x, grid_y + 25, SMALL_SIZE, {0.5, 0.5, 0.5, 1.0})
 
+		// -- Floating damage number (loops every 1.5s) --
+		float_age := math.mod(elapsed, 1.5)
+		slug.draw_text_float(ctx, "-15", 350, 350, BODY_SIZE, {1.0, 0.3, 0.3, 1.0}, float_age, duration = 1.5)
+
+		// -- New effects: gradient, pulse, fade --
+		slug.draw_text_gradient(ctx, "Gradient text!", 420, 520, BODY_SIZE, {1.0, 0.8, 0.2, 1.0}, {1.0, 0.2, 0.4, 1.0})
+		slug.draw_text_pulse(ctx, "Pulsing!", 420, 570, BODY_SIZE, COLOR_CYAN, time = elapsed)
+		fade_alpha := (math.sin(elapsed * 2.0) + 1.0) * 0.5
+		slug.draw_text_fade(ctx, "Fading in and out...", 420, 620, SMALL_SIZE, COLOR_WHITE, fade_alpha)
+
+		// -- Alignment demo: all three share the same x anchor --
+		ALIGN_X :: f32(1050)
+		rl.DrawLine(i32(ALIGN_X), 230, i32(ALIGN_X), 320, rl.Color{80, 80, 80, 255})
+		slug.draw_text(ctx, "Left-aligned", ALIGN_X, 245, SMALL_SIZE, {0.8, 0.6, 0.6, 1.0})
+		slug.draw_text_centered(ctx, "Centered", ALIGN_X, 270, SMALL_SIZE, {0.6, 0.6, 0.8, 1.0})
+		slug.draw_text_right(ctx, "Right-aligned", ALIGN_X, 295, SMALL_SIZE, {0.6, 0.8, 0.6, 1.0})
+
 		// -- Word wrap demo --
 		// draw_text_wrapped returns total height, so we can size the box to fit.
 		WRAP_TEXT :: "The ancient scroll reads: You have defeated the Skeleton King and earned 250 gold. Your sword glows with newfound power."

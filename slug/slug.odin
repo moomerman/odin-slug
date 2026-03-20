@@ -62,6 +62,21 @@ CUBIC_TO_QUAD_TOLERANCE :: f32(0.001)
 // RGBA color as 4 floats (0.0–1.0 per channel).
 Color :: [4]f32
 
+// Common color constants.
+WHITE       :: Color{1.0, 1.0, 1.0, 1.0}
+BLACK       :: Color{0.0, 0.0, 0.0, 1.0}
+RED         :: Color{1.0, 0.0, 0.0, 1.0}
+GREEN       :: Color{0.0, 1.0, 0.0, 1.0}
+BLUE        :: Color{0.0, 0.0, 1.0, 1.0}
+YELLOW      :: Color{1.0, 1.0, 0.0, 1.0}
+CYAN        :: Color{0.0, 1.0, 1.0, 1.0}
+MAGENTA     :: Color{1.0, 0.0, 1.0, 1.0}
+ORANGE      :: Color{1.0, 0.6, 0.0, 1.0}
+GRAY        :: Color{0.5, 0.5, 0.5, 1.0}
+LIGHT_GRAY  :: Color{0.75, 0.75, 0.75, 1.0}
+DARK_GRAY   :: Color{0.25, 0.25, 0.25, 1.0}
+TRANSPARENT :: Color{0.0, 0.0, 0.0, 0.0}
+
 // --- Vertex Format ---
 // Matches the 5x vec4 attribute layout in the vertex shader (locations 0-4).
 // 80 bytes per vertex. All data for fragment-shader curve evaluation is packed

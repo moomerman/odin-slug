@@ -452,3 +452,36 @@ draw_text_pulse :: proc(
 		char_idx += 1
 	}
 }
+
+// --- Floating damage number ---
+// Classic game effect: text rises upward and fades out over a duration.
+// age is seconds since the number appeared. Returns false when the
+// animation is complete (age >= duration), so the caller knows to remove it.
+//
+// Typical usage:
+//   if slug.draw_text_float(ctx, "-15", x, y, 28, slug.RED, age) {
+//       // still visible, keep it alive
+//   } else {
+//       // animation done, remove from list
+//   }
+
+draw_text_float :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	color: Color,
+	age: f32,
+	duration: f32 = 1.0,
+	rise_distance: f32 = 60.0,
+) -> bool {
+	if age < 0 || age >= duration do return false
+
+	t := age / duration
+	current_y := y - rise_distance * t
+	alpha := 1.0 - t * t // quadratic fade — stays visible longer, then drops off
+
+	faded := Color{color.r, color.g, color.b, color.a * alpha}
+	draw_text_centered(ctx, text, x, current_y, font_size, faded)
+	return true
+}
