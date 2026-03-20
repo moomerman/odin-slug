@@ -136,6 +136,10 @@ main :: proc() {
 		screen_w := rl.GetScreenWidth()
 		screen_h := rl.GetScreenHeight()
 
+		// UI scale with Up/Down arrow keys
+		if rl.IsKeyPressed(.UP) do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
+		if rl.IsKeyPressed(.DOWN) do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{20, 20, 30, 255})
 
@@ -170,24 +174,24 @@ main :: proc() {
 
 		slug.begin(ctx)
 
-		// -- Title with drop shadow --
+		// -- Title with drop shadow (scales with UI scale) --
 		slug.draw_text_shadow(
 			ctx,
 			"Slug + Raylib",
 			LEFT_MARGIN,
 			TOP_START,
-			TITLE_SIZE,
+			slug.scaled_size(ctx, TITLE_SIZE),
 			COLOR_WHITE,
 			shadow_offset = 2.0,
 		)
 
-		// -- Description text with outline --
+		// -- Description text with outline (scales with UI scale) --
 		slug.draw_text_outlined(
 			ctx,
 			"GPU Bezier text mixed with Raylib shapes.",
 			LEFT_MARGIN,
 			TOP_START + LINE_SPACING,
-			BODY_SIZE,
+			slug.scaled_size(ctx, BODY_SIZE),
 			COLOR_CYAN,
 			outline_thickness = 2.5,
 			outline_color = {0.8, 0.2, 0.8, 1.0},
@@ -306,8 +310,9 @@ main :: proc() {
 		// cursor, tooltip border), you can do more Raylib draws here.
 		// Raylib will re-bind its own shader on the next rl.Draw* call.
 
-		// FPS counter on top of everything
+		// FPS counter and scale indicator
 		rl.DrawFPS(WINDOW_WIDTH - 100, 10)
+		rl.DrawText(fmt.ctprintf("Scale: %.2fx [Up/Down]", ctx.ui_scale), 10, WINDOW_HEIGHT - 25, 16, rl.GRAY)
 
 		rl.EndDrawing()
 	}

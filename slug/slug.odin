@@ -151,6 +151,11 @@ Context :: struct {
 	// Active font for drawing
 	active_font_idx: int,
 
+	// UI scale factor — multiplied into font sizes via scaled_size().
+	// Set this to match your display DPI or user preference.
+	// Default: 1.0 (set in begin()).
+	ui_scale:        f32,
+
 	// Per-frame vertex buffer (CPU side — backends upload to GPU)
 	vertices:        [MAX_GLYPH_VERTICES]Vertex,
 	quad_count:      u32,
@@ -169,6 +174,7 @@ begin :: proc(ctx: ^Context) {
 	ctx.font_quad_start = {}
 	ctx.font_quad_count = {}
 	ctx.font_quad_start[0] = 0
+	if ctx.ui_scale == 0 do ctx.ui_scale = 1.0
 }
 
 // Finalize per-font quad ranges. Call after all draw calls, before backend flush.
@@ -214,6 +220,21 @@ register_font :: proc(ctx: ^Context, slot: int, font: Font) -> bool {
 active_font :: proc(ctx: ^Context) -> ^Font {
 	assert(ctx.active_font_idx >= 0 && ctx.active_font_idx < MAX_FONT_SLOTS)
 	return &ctx.fonts[ctx.active_font_idx]
+}
+
+// Set the UI scale factor. Affects all subsequent scaled_size() calls.
+// Use this at startup to match display DPI, or at runtime for a user
+// "text size" slider.  1.0 = no scaling, 2.0 = double size, etc.
+set_ui_scale :: proc(ctx: ^Context, scale: f32) {
+	ctx.ui_scale = scale if scale > 0 else 1.0
+}
+
+// Apply the context's UI scale to a logical font size.
+// Use this in draw and measure calls so text scales uniformly:
+//   slug.draw_text(ctx, "hello", x, y, slug.scaled_size(ctx, 24), color)
+//   w, h := slug.measure_text(font, "hello", slug.scaled_size(ctx, 24))
+scaled_size :: proc(ctx: ^Context, font_size: f32) -> f32 {
+	return font_size * ctx.ui_scale
 }
 
 // Number of vertices written this frame (for backend upload).
