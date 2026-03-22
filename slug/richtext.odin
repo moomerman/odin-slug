@@ -1,18 +1,21 @@
 package slug
 
 // ===================================================
-// Rich text — inline color markup for mixed-color text.
+// Rich text — inline color and background markup.
 //
-// Markup format:  {color_name:text} or {#rrggbb:text}
+// Foreground color:   {color_name:text} or {#rrggbb:text}
+// Background color:   {bg:color_name:text} or {bg:#rrggbb:text}
 // Untagged text uses the default color passed to draw_rich_text.
 //
 // Supported named colors: red, green, blue, yellow, cyan, magenta,
-// orange, white, black, gray.
+// orange, white, black, gray, light_gray, dark_gray.
 //
 // Examples:
 //   "You deal {red:15} damage!"
 //   "Found a {yellow:Golden Sword} in the chest."
 //   "{#ff8800:Warning:} low health!"
+//   "Status: {bg:red:POISONED}"
+//   "{bg:#003300:{green:STEALTH}}"   -- bg + fg on same text (bg tag wraps fg tag — not nesting)
 //   "Plain text with no markup works too."
 //
 // Nesting is NOT supported. Braces inside tagged text are literal.
@@ -26,8 +29,8 @@ Rich_Segment :: struct {
 	color: Color,
 }
 
-// Draw rich text with inline color markup at the given position.
-// Parses markup on the fly and draws each segment with its color.
+// Draw rich text with inline color and background markup at the given position.
+// Parses markup on the fly and draws each segment with its colors.
 // Returns the total width drawn (for positioning content after it).
 draw_rich_text :: proc(
 	ctx: ^Context,
@@ -46,7 +49,6 @@ draw_rich_text :: proc(
 		if text[i] == '{' {
 			// Escaped brace: {{ => literal {
 			if i + 1 < len(text) && text[i + 1] == '{' {
-				// Draw single '{'
 				draw_text(ctx, "{", pen_x, y, font_size, default_color, use_kerning)
 				w, _ := measure_text(font, "{", font_size, use_kerning)
 				pen_x += w
@@ -54,13 +56,25 @@ draw_rich_text :: proc(
 				continue
 			}
 
-			// Try to parse {color:text}
-			seg_color, seg_text, end_pos, ok := parse_rich_tag(text, i)
-			if ok {
-				draw_text(ctx, seg_text, pen_x, y, font_size, seg_color, use_kerning)
-				w, _ := measure_text(font, seg_text, font_size, use_kerning)
+			// Try to parse {bg:color:text} first
+			bg_color, seg_text, end_pos, bg_ok := parse_bg_tag(text, i)
+			if bg_ok {
+				w, h := measure_text(font, seg_text, font_size, use_kerning)
+				rect_y := y - font.ascent * font_size
+				draw_rect(ctx, pen_x, rect_y, w, h, bg_color)
+				draw_text(ctx, seg_text, pen_x, y, font_size, default_color, use_kerning)
 				pen_x += w
 				i = end_pos
+				continue
+			}
+
+			// Try to parse {color:text}
+			seg_color, seg_text2, end_pos2, fg_ok := parse_rich_tag(text, i)
+			if fg_ok {
+				draw_text(ctx, seg_text2, pen_x, y, font_size, seg_color, use_kerning)
+				w, _ := measure_text(font, seg_text2, font_size, use_kerning)
+				pen_x += w
+				i = end_pos2
 				continue
 			}
 		}
@@ -167,6 +181,52 @@ rich_text_plain_length :: proc(text: string) -> int {
 }
 
 // --- Internal parsing ---
+
+// Parse a {bg:color:text} background tag starting at `start`.
+// Returns the background color, the inner text, position after '}', and success.
+// The inner text is drawn with the caller's default foreground color —
+// nest a {color:...} tag inside if you also want a custom foreground.
+@(private = "file")
+parse_bg_tag :: proc(text: string, start: int) -> (bg_color: Color, inner: string, end_pos: int, ok: bool) {
+	if start >= len(text) || text[start] != '{' do return {}, "", start, false
+
+	// Must start with "{bg:"
+	prefix :: "{bg:"
+	if start + len(prefix) > len(text) do return {}, "", start, false
+	if text[start:start + len(prefix)] != prefix do return {}, "", start, false
+
+	// Find the second colon (separating color from text)
+	colon2 := -1
+	for j := start + len(prefix); j < len(text); j += 1 {
+		if text[j] == ':' {
+			colon2 = j
+			break
+		}
+		if text[j] == '}' || text[j] == '{' {
+			return {}, "", start, false
+		}
+	}
+	if colon2 < 0 do return {}, "", start, false
+
+	color_name := text[start + len(prefix):colon2]
+
+	// Find closing brace
+	close := -1
+	for j := colon2 + 1; j < len(text); j += 1 {
+		if text[j] == '}' {
+			close = j
+			break
+		}
+	}
+	if close < 0 do return {}, "", start, false
+
+	inner_text := text[colon2 + 1:close]
+
+	resolved, color_ok := resolve_color_name(color_name)
+	if !color_ok do return {}, "", start, false
+
+	return resolved, inner_text, close + 1, true
+}
 
 // Parse a {color:text} tag starting at position `start` (which should be '{').
 // Returns the color, the inner text (as a slice of the original string),

@@ -378,6 +378,71 @@ draw_icon :: proc(ctx: ^Context, icon_index: int, x, y: f32, size: f32, color: C
 	}
 }
 
+// Draw a solid colored rectangle.
+// x, y is the top-left corner in screen space. w, h are in pixels.
+// The rect is added to ctx.rect_vertices[], which backends draw with a
+// flat-color shader BEFORE the Slug text pass — so rects always appear
+// behind any text drawn in the same frame.
+//
+// Typical use: call draw_rect before draw_text to highlight a region:
+//   slug.draw_rect(ctx, x, y - ascent, w, line_h, slug.Color{0.2, 0.2, 0.8, 0.5})
+//   slug.draw_text(ctx, "selected item", x, y, size, slug.WHITE)
+draw_rect :: proc(ctx: ^Context, x, y, w, h: f32, color: Color) {
+	if ctx.rect_count >= MAX_RECTS do return
+
+	base := ctx.rect_count * VERTICES_PER_QUAD
+
+	ctx.rect_vertices[base + 0] = Rect_Vertex{{x,     y    }, color}
+	ctx.rect_vertices[base + 1] = Rect_Vertex{{x + w, y    }, color}
+	ctx.rect_vertices[base + 2] = Rect_Vertex{{x + w, y + h}, color}
+	ctx.rect_vertices[base + 3] = Rect_Vertex{{x,     y + h}, color}
+
+	ctx.rect_count += 1
+}
+
+// Draw text with a solid background color behind it.
+// x, y is the baseline-left position (same convention as draw_text).
+// The background rect spans the full line height (ascent to descent) and
+// the full text width. The rect is drawn before the text, so it always
+// appears behind the glyphs.
+//
+// Example:
+//   // Highlight a stat value in a roguelike HUD
+//   slug.draw_text_highlighted(ctx, "POISONED", x, y, size, slug.BLACK, slug.Color{0.2, 0.8, 0.2, 1})
+draw_text_highlighted :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	text_color: Color,
+	bg_color: Color,
+	use_kerning: bool = true,
+) {
+	font := active_font(ctx)
+	w, h := measure_text(font, text, font_size, use_kerning)
+	rect_y := y - font.ascent * font_size
+	draw_rect(ctx, x, rect_y, w, h, bg_color)
+	draw_text(ctx, text, x, y, font_size, text_color, use_kerning)
+}
+
+// Helper: return the background rect dimensions for a text string.
+// Use this when you need to position the rect yourself (e.g. with padding):
+//   rx, ry, rw, rh := slug.text_bg_rect(font, text, x, y, size)
+//   slug.draw_rect(ctx, rx - pad, ry - pad, rw + pad*2, rh + pad*2, bg_color)
+//   slug.draw_text(ctx, text, x, y, size, fg_color)
+text_bg_rect :: proc(
+	font: ^Font,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	use_kerning: bool = true,
+) -> (
+	rect_x, rect_y, rect_w, rect_h: f32,
+) {
+	w, h := measure_text(font, text, font_size, use_kerning)
+	return x, y - font.ascent * font_size, w, h
+}
+
 // --- Vertex packing ---
 
 // Emit a single glyph quad into the vertex buffer (axis-aligned).

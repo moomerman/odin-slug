@@ -73,12 +73,21 @@ Renderer :: struct {
 	descriptor_set_layout: vk.DescriptorSetLayout,
 	descriptor_pool:       vk.DescriptorPool,
 
-	// Vertex/index buffers
+	// Slug vertex/index buffers
 	vertex_buffer:         vk.Buffer,
 	vertex_memory:         vk.DeviceMemory,
 	vertex_mapped:         [^]slug.Vertex,
 	index_buffer:          vk.Buffer,
 	index_memory:          vk.DeviceMemory,
+
+	// Rect pipeline (flat-color pass drawn before Slug text)
+	rect_pipeline_layout:  vk.PipelineLayout,
+	rect_pipeline:         vk.Pipeline,
+	rect_vertex_buffer:    vk.Buffer,
+	rect_vertex_memory:    vk.DeviceMemory,
+	rect_vertex_mapped:    [^]slug.Rect_Vertex,
+	rect_index_buffer:     vk.Buffer,
+	rect_index_memory:     vk.DeviceMemory,
 
 	// Command state
 	command_pool:          vk.CommandPool,
@@ -103,8 +112,10 @@ Renderer :: struct {
 // --- Public API ---
 
 // SPIR-V bytecode embedded at compile time — no runtime file loading needed.
-VERT_SHADER_CODE :: #load("slug_vert.spv")
-FRAG_SHADER_CODE :: #load("slug_frag.spv")
+VERT_SHADER_CODE      :: #load("slug_vert.spv")
+FRAG_SHADER_CODE      :: #load("slug_frag.spv")
+RECT_VERT_SHADER_CODE :: #load("rect_vert.spv")
+RECT_FRAG_SHADER_CODE :: #load("rect_frag.spv")
 
 init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
 	r.window = window
@@ -148,6 +159,8 @@ init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
 	if !create_command_buffers(r) do return false
 	if !create_sync_objects(r) do return false
 	if !create_vertex_index_buffers(r) do return false
+	if !create_rect_pipeline(r) do return false
+	if !create_rect_buffers(r) do return false
 
 	return true
 }
@@ -187,19 +200,29 @@ destroy :: proc(r: ^Renderer) {
 		}
 	}
 
-	// Vertex/index buffers
+	// Slug vertex/index buffers
 	if r.vertex_buffer != 0 do vk.DestroyBuffer(r.device, r.vertex_buffer, nil)
 	if r.vertex_memory != 0 do vk.FreeMemory(r.device, r.vertex_memory, nil)
 	if r.index_buffer != 0 do vk.DestroyBuffer(r.device, r.index_buffer, nil)
 	if r.index_memory != 0 do vk.FreeMemory(r.device, r.index_memory, nil)
 
+	// Rect buffers
+	if r.rect_vertex_buffer != 0 do vk.DestroyBuffer(r.device, r.rect_vertex_buffer, nil)
+	if r.rect_vertex_memory != 0 do vk.FreeMemory(r.device, r.rect_vertex_memory, nil)
+	if r.rect_index_buffer != 0 do vk.DestroyBuffer(r.device, r.rect_index_buffer, nil)
+	if r.rect_index_memory != 0 do vk.FreeMemory(r.device, r.rect_index_memory, nil)
+
 	// Descriptors
 	if r.descriptor_pool != 0 do vk.DestroyDescriptorPool(r.device, r.descriptor_pool, nil)
 	if r.descriptor_set_layout != 0 do vk.DestroyDescriptorSetLayout(r.device, r.descriptor_set_layout, nil)
 
-	// Pipeline
+	// Slug pipeline
 	if r.pipeline != 0 do vk.DestroyPipeline(r.device, r.pipeline, nil)
 	if r.pipeline_layout != 0 do vk.DestroyPipelineLayout(r.device, r.pipeline_layout, nil)
+
+	// Rect pipeline
+	if r.rect_pipeline != 0 do vk.DestroyPipeline(r.device, r.rect_pipeline, nil)
+	if r.rect_pipeline_layout != 0 do vk.DestroyPipelineLayout(r.device, r.rect_pipeline_layout, nil)
 
 	// Command pool
 	if r.command_pool != 0 do vk.DestroyCommandPool(r.device, r.command_pool, nil)
@@ -553,6 +576,25 @@ draw_frame :: proc(r: ^Renderer) -> bool {
 	}
 	vk.CmdSetScissor(cmd, 0, 1, &scissor)
 
+	// --- Rect pass (drawn before text so rects appear behind glyphs) ---
+	if r.ctx.rect_count > 0 {
+		rect_vert_count := int(r.ctx.rect_count) * slug.VERTICES_PER_QUAD
+		mem.copy(r.rect_vertex_mapped, &r.ctx.rect_vertices[0], rect_vert_count * size_of(slug.Rect_Vertex))
+
+		w := f32(r.swapchain_extent.width)
+		h := f32(r.swapchain_extent.height)
+		rect_pc := linalg.matrix_ortho3d_f32(0, w, h, 0, -1, 1)
+
+		vk.CmdBindPipeline(cmd, .GRAPHICS, r.rect_pipeline)
+		vk.CmdPushConstants(cmd, r.rect_pipeline_layout, {.VERTEX}, 0, size_of(matrix[4, 4]f32), &rect_pc)
+
+		rect_vb_offset := vk.DeviceSize(0)
+		vk.CmdBindVertexBuffers(cmd, 0, 1, &r.rect_vertex_buffer, &rect_vb_offset)
+		vk.CmdBindIndexBuffer(cmd, r.rect_index_buffer, 0, .UINT32)
+		vk.CmdDrawIndexed(cmd, r.ctx.rect_count * slug.INDICES_PER_QUAD, 1, 0, 0, 0)
+	}
+
+	// --- Slug text pass ---
 	if r.ctx.quad_count > 0 {
 		vk.CmdBindPipeline(cmd, .GRAPHICS, r.pipeline)
 
@@ -1293,6 +1335,160 @@ create_sync_objects :: proc(r: ^Renderer) -> bool {
 		if vk.CreateSemaphore(r.device, &sem_info, nil, &r.render_finished[i]) != .SUCCESS do return false
 		if vk.CreateFence(r.device, &fence_info, nil, &r.in_flight_fences[i]) != .SUCCESS do return false
 	}
+
+	return true
+}
+
+@(private = "file")
+create_rect_pipeline :: proc(r: ^Renderer) -> bool {
+	vert_module, vert_ok := create_shader_module(r, RECT_VERT_SHADER_CODE)
+	if !vert_ok do return false
+	defer vk.DestroyShaderModule(r.device, vert_module, nil)
+
+	frag_module, frag_ok := create_shader_module(r, RECT_FRAG_SHADER_CODE)
+	if !frag_ok do return false
+	defer vk.DestroyShaderModule(r.device, frag_module, nil)
+
+	shader_stages := [?]vk.PipelineShaderStageCreateInfo {
+		{sType = .PIPELINE_SHADER_STAGE_CREATE_INFO, stage = {.VERTEX}, module = vert_module, pName = "main"},
+		{sType = .PIPELINE_SHADER_STAGE_CREATE_INFO, stage = {.FRAGMENT}, module = frag_module, pName = "main"},
+	}
+
+	// Rect_Vertex: vec2 pos (location 0), vec4 col (location 1)
+	binding_desc := vk.VertexInputBindingDescription {
+		binding   = 0,
+		stride    = size_of(slug.Rect_Vertex),
+		inputRate = .VERTEX,
+	}
+	attrib_descs := [2]vk.VertexInputAttributeDescription {
+		{binding = 0, location = 0, format = .R32G32_SFLOAT,       offset = u32(offset_of(slug.Rect_Vertex, pos))},
+		{binding = 0, location = 1, format = .R32G32B32A32_SFLOAT, offset = u32(offset_of(slug.Rect_Vertex, col))},
+	}
+
+	vertex_input := vk.PipelineVertexInputStateCreateInfo {
+		sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		vertexBindingDescriptionCount   = 1,
+		pVertexBindingDescriptions      = &binding_desc,
+		vertexAttributeDescriptionCount = len(attrib_descs),
+		pVertexAttributeDescriptions    = &attrib_descs[0],
+	}
+	input_assembly := vk.PipelineInputAssemblyStateCreateInfo {
+		sType    = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		topology = .TRIANGLE_LIST,
+	}
+
+	dynamic_states := [?]vk.DynamicState{.VIEWPORT, .SCISSOR}
+	dynamic_state := vk.PipelineDynamicStateCreateInfo {
+		sType             = .PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		dynamicStateCount = len(dynamic_states),
+		pDynamicStates    = &dynamic_states[0],
+	}
+	viewport_state := vk.PipelineViewportStateCreateInfo {
+		sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		viewportCount = 1,
+		scissorCount  = 1,
+	}
+	rasterizer := vk.PipelineRasterizationStateCreateInfo {
+		sType       = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		polygonMode = .FILL,
+		lineWidth   = 1.0,
+		cullMode    = {},
+		frontFace   = .COUNTER_CLOCKWISE,
+	}
+	multisampling := vk.PipelineMultisampleStateCreateInfo {
+		sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		rasterizationSamples = {._1},
+	}
+	color_blend_attachment := vk.PipelineColorBlendAttachmentState {
+		colorWriteMask      = {.R, .G, .B, .A},
+		blendEnable         = true,
+		srcColorBlendFactor = .SRC_ALPHA,
+		dstColorBlendFactor = .ONE_MINUS_SRC_ALPHA,
+		colorBlendOp        = .ADD,
+		srcAlphaBlendFactor = .ONE,
+		dstAlphaBlendFactor = .ONE_MINUS_SRC_ALPHA,
+		alphaBlendOp        = .ADD,
+	}
+	color_blending := vk.PipelineColorBlendStateCreateInfo {
+		sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		attachmentCount = 1,
+		pAttachments    = &color_blend_attachment,
+	}
+
+	// Push constants: just mvp (64 bytes), no descriptor sets
+	push_constant_range := vk.PushConstantRange {
+		stageFlags = {.VERTEX},
+		offset     = 0,
+		size       = size_of(matrix[4, 4]f32),
+	}
+	layout_info := vk.PipelineLayoutCreateInfo {
+		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+		pushConstantRangeCount = 1,
+		pPushConstantRanges    = &push_constant_range,
+	}
+	if vk.CreatePipelineLayout(r.device, &layout_info, nil, &r.rect_pipeline_layout) != .SUCCESS {
+		return false
+	}
+
+	pipeline_info := vk.GraphicsPipelineCreateInfo {
+		sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+		stageCount          = len(shader_stages),
+		pStages             = &shader_stages[0],
+		pVertexInputState   = &vertex_input,
+		pInputAssemblyState = &input_assembly,
+		pViewportState      = &viewport_state,
+		pRasterizationState = &rasterizer,
+		pMultisampleState   = &multisampling,
+		pColorBlendState    = &color_blending,
+		pDynamicState       = &dynamic_state,
+		layout              = r.rect_pipeline_layout,
+		renderPass          = r.render_pass,
+		subpass             = 0,
+	}
+	if vk.CreateGraphicsPipelines(r.device, 0, 1, &pipeline_info, nil, &r.rect_pipeline) != .SUCCESS {
+		return false
+	}
+
+	return true
+}
+
+@(private = "file")
+create_rect_buffers :: proc(r: ^Renderer) -> bool {
+	// Rect vertex buffer: persistently mapped HOST_VISIBLE
+	vb_size := vk.DeviceSize(slug.MAX_RECTS * slug.VERTICES_PER_QUAD * size_of(slug.Rect_Vertex))
+	vb, vm, vb_ok := create_buffer(r, vb_size, {.VERTEX_BUFFER}, {.HOST_VISIBLE, .HOST_COHERENT})
+	if !vb_ok do return false
+	r.rect_vertex_buffer = vb
+	r.rect_vertex_memory = vm
+
+	mapped: rawptr
+	if vk.MapMemory(r.device, vm, 0, vb_size, {}, &mapped) != .SUCCESS do return false
+	r.rect_vertex_mapped = cast([^]slug.Rect_Vertex)mapped
+
+	// Rect index buffer: pre-generated quad indices, uploaded once
+	indices := generate_quad_indices(slug.MAX_RECTS)
+	defer delete(indices)
+	ib_size := vk.DeviceSize(len(indices) * size_of(u32))
+
+	staging_buf, staging_mem, staging_ok := create_buffer(r, ib_size, {.TRANSFER_SRC}, {.HOST_VISIBLE, .HOST_COHERENT})
+	if !staging_ok do return false
+	defer vk.DestroyBuffer(r.device, staging_buf, nil)
+	defer vk.FreeMemory(r.device, staging_mem, nil)
+
+	staging_mapped: rawptr
+	vk.MapMemory(r.device, staging_mem, 0, ib_size, {}, &staging_mapped)
+	mem.copy(staging_mapped, raw_data(indices), int(ib_size))
+	vk.UnmapMemory(r.device, staging_mem)
+
+	ib, im, ib_ok := create_buffer(r, ib_size, {.INDEX_BUFFER, .TRANSFER_DST}, {.DEVICE_LOCAL})
+	if !ib_ok do return false
+	r.rect_index_buffer = ib
+	r.rect_index_memory = im
+
+	cmd := begin_one_shot_commands(r)
+	copy_region := vk.BufferCopy{size = ib_size}
+	vk.CmdCopyBuffer(cmd, staging_buf, ib, 1, &copy_region)
+	end_one_shot_commands(r, cmd)
 
 	return true
 }

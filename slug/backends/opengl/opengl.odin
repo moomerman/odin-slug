@@ -41,10 +41,17 @@ Renderer :: struct {
 	curve_tex_loc: i32,
 	band_tex_loc:  i32,
 
-	// GL objects
+	// Slug text GL objects
 	vao:           u32,
 	vbo:           u32,
 	ibo:           u32,
+
+	// Rect GL objects (flat-color pass drawn before text)
+	rect_program:  u32,
+	rect_mvp_loc:  i32,
+	rect_vao:      u32,
+	rect_vbo:      u32,
+	rect_ibo:      u32,
 
 	// Per-font textures (used when NOT in shared atlas mode)
 	font_gl:       [slug.MAX_FONT_SLOTS]Font_GL,
@@ -283,10 +290,33 @@ void main()
 `
 
 
+// ===================================================
+// Flat-color rect shaders (GLSL 3.30)
+// Used by draw_rect / draw_text_highlighted.
+// ===================================================
+
+RECT_VERTEX_SHADER_SOURCE :: `#version 330 core
+layout(location = 0) in vec2 inPos;
+layout(location = 1) in vec4 inCol;
+uniform mat4 mvp;
+out vec4 vColor;
+void main() {
+    gl_Position = mvp * vec4(inPos, 0.0, 1.0);
+    vColor = inCol;
+}
+`
+
+RECT_FRAGMENT_SHADER_SOURCE :: `#version 330 core
+in vec4 vColor;
+out vec4 fragColor;
+void main() { fragColor = vColor; }
+`
+
 // --- Vertex layout constants ---
 
-VERTEX_SIZE :: size_of(slug.Vertex) // 80 bytes (5x vec4)
-ATTRIB_COUNT :: 5
+VERTEX_SIZE      :: size_of(slug.Vertex)      // 80 bytes (5x vec4)
+ATTRIB_COUNT     :: 5
+RECT_VERTEX_SIZE :: size_of(slug.Rect_Vertex) // 24 bytes (vec2 + vec4)
 
 // ===================================================
 // Initialization
@@ -350,6 +380,57 @@ init :: proc(r: ^Renderer) -> bool {
 	)
 
 	gl.BindVertexArray(0)
+
+	// --- Rect pipeline setup ---
+	rect_program, rect_program_ok := gl.load_shaders_source(
+		RECT_VERTEX_SHADER_SOURCE,
+		RECT_FRAGMENT_SHADER_SOURCE,
+	)
+	if !rect_program_ok do return false
+	r.rect_program = rect_program
+	r.rect_mvp_loc = gl.GetUniformLocation(rect_program, "mvp")
+
+	gl.GenVertexArrays(1, &r.rect_vao)
+	gl.BindVertexArray(r.rect_vao)
+
+	gl.GenBuffers(1, &r.rect_vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.rect_vbo)
+	gl.BufferData(
+		gl.ARRAY_BUFFER,
+		slug.MAX_RECTS * slug.VERTICES_PER_QUAD * RECT_VERTEX_SIZE,
+		nil,
+		gl.DYNAMIC_DRAW,
+	)
+
+	// location 0: vec2 pos
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, i32(RECT_VERTEX_SIZE), 0)
+	// location 1: vec4 col
+	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointer(1, 4, gl.FLOAT, false, i32(RECT_VERTEX_SIZE), 2 * size_of(f32))
+
+	gl.GenBuffers(1, &r.rect_ibo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.rect_ibo)
+
+	rect_indices: [slug.MAX_RECTS * slug.INDICES_PER_QUAD]u32
+	for q in 0 ..< slug.MAX_RECTS {
+		base := u32(q) * 4
+		off := q * 6
+		rect_indices[off + 0] = base + 0
+		rect_indices[off + 1] = base + 1
+		rect_indices[off + 2] = base + 2
+		rect_indices[off + 3] = base + 2
+		rect_indices[off + 4] = base + 3
+		rect_indices[off + 5] = base + 0
+	}
+	gl.BufferData(
+		gl.ELEMENT_ARRAY_BUFFER,
+		slug.MAX_RECTS * slug.INDICES_PER_QUAD * size_of(u32),
+		&rect_indices,
+		gl.STATIC_DRAW,
+	)
+
+	gl.BindVertexArray(0)
 	return true
 }
 
@@ -403,6 +484,29 @@ flush :: proc(r: ^Renderer, width, height: i32) {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.Disable(gl.DEPTH_TEST)
 
+	// --- Rect pass (drawn before text so rects appear behind glyphs) ---
+	if r.ctx.rect_count > 0 {
+		rect_vert_count := int(r.ctx.rect_count) * slug.VERTICES_PER_QUAD
+		gl.UseProgram(r.rect_program)
+		gl.UniformMatrix4fv(r.rect_mvp_loc, 1, false, &proj[0][0])
+		gl.BindVertexArray(r.rect_vao)
+		gl.BindBuffer(gl.ARRAY_BUFFER, r.rect_vbo)
+		gl.BufferSubData(
+			gl.ARRAY_BUFFER,
+			0,
+			rect_vert_count * RECT_VERTEX_SIZE,
+			&r.ctx.rect_vertices[0],
+		)
+		gl.DrawElements(
+			gl.TRIANGLES,
+			i32(r.ctx.rect_count * slug.INDICES_PER_QUAD),
+			gl.UNSIGNED_INT,
+			nil,
+		)
+		gl.BindVertexArray(0)
+	}
+
+	// --- Slug text pass ---
 	gl.UseProgram(r.program)
 
 	// Set uniforms
@@ -625,11 +729,17 @@ destroy :: proc(r: ^Renderer) {
 		}
 	}
 
-	// Delete GL objects
+	// Delete Slug text GL objects
 	if r.ibo != 0 do gl.DeleteBuffers(1, &r.ibo)
 	if r.vbo != 0 do gl.DeleteBuffers(1, &r.vbo)
 	if r.vao != 0 do gl.DeleteVertexArrays(1, &r.vao)
 	if r.program != 0 do gl.DeleteProgram(r.program)
+
+	// Delete rect GL objects
+	if r.rect_ibo != 0 do gl.DeleteBuffers(1, &r.rect_ibo)
+	if r.rect_vbo != 0 do gl.DeleteBuffers(1, &r.rect_vbo)
+	if r.rect_vao != 0 do gl.DeleteVertexArrays(1, &r.rect_vao)
+	if r.rect_program != 0 do gl.DeleteProgram(r.rect_program)
 
 	// Destroy slug context (frees fonts and glyph data)
 	slug.destroy(&r.ctx)

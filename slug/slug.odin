@@ -50,6 +50,11 @@ INDICES_PER_QUAD :: 6
 MAX_GLYPH_VERTICES :: MAX_GLYPH_QUADS * VERTICES_PER_QUAD
 MAX_GLYPH_INDICES :: MAX_GLYPH_QUADS * INDICES_PER_QUAD
 
+// Maximum colored background rects per frame.
+// Used by draw_rect and draw_text_highlighted. Backends draw these
+// with a flat-color shader BEFORE the Slug text pass so they appear behind text.
+MAX_RECTS :: 512
+
 // Maximum simultaneously loaded fonts
 MAX_FONT_SLOTS :: 4
 
@@ -88,6 +93,14 @@ Vertex :: struct {
 	jac: [4]f32, // 2x2 inverse Jacobian (screen-space -> em-space)
 	bnd: [4]f32, // band transform: em coord -> band index via (coord * scale + offset)
 	col: Color, // vertex color RGBA
+}
+
+// Simple position + color vertex for solid background rectangles.
+// Used by draw_rect / draw_text_highlighted. Backends render these
+// with a flat-color shader before the Slug text pass.
+Rect_Vertex :: struct {
+	pos: [2]f32,
+	col: Color,
 }
 
 // --- Curve and Glyph Types ---
@@ -185,13 +198,22 @@ Context :: struct {
 	// Per-font quad ranges for batched draw calls (unused in shared_atlas mode)
 	font_quad_start: [MAX_FONT_SLOTS]u32,
 	font_quad_count: [MAX_FONT_SLOTS]u32,
+
+	// Per-frame rect buffer for solid background rectangles.
+	// Backends drain this with a flat-color shader BEFORE the Slug text pass.
+	// Each rect is stored as 4 vertices (a quad); backends use the same
+	// 0,1,2,2,3,0 index pattern as the glyph pass.
+	rect_vertices:   [MAX_RECTS * VERTICES_PER_QUAD]Rect_Vertex,
+	rect_count:      u32,
 }
 
 // --- Context operations ---
 
-// Reset quad counter for a new frame. Call before any draw_text/draw_icon calls.
+// Reset quad and rect counters for a new frame.
+// Call before any draw_text/draw_icon/draw_rect calls.
 begin :: proc(ctx: ^Context) {
 	ctx.quad_count = 0
+	ctx.rect_count = 0
 	ctx.active_font_idx = 0
 	ctx.font_quad_start = {}
 	ctx.font_quad_count = {}

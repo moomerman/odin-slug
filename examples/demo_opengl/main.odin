@@ -342,6 +342,11 @@ main :: proc() {
 		seg_y: f32 = 350
 		slug.draw_rich_text(ctx, "You deal {red:15} damage with {yellow:Golden Sword}!", LEFT_MARGIN, seg_y, BODY_SIZE, COLOR_WHITE)
 
+		// -- Background highlights / draw_rect demo --
+		highlight_y := seg_y + LINE_SPACING * 2
+		slug.draw_text_highlighted(ctx, "SELECTED", LEFT_MARGIN, highlight_y, BODY_SIZE, slug.BLACK, {0.3, 0.6, 1.0, 1.0})
+		slug.draw_rich_text(ctx, "  Status: {bg:red:POISONED}  {bg:green:HASTE}  {bg:#884400:BURNING}", LEFT_MARGIN + 130, highlight_y, BODY_SIZE, COLOR_WHITE)
+
 		// -- Unicode --
 		slug.draw_text(ctx, "Héros: épée, château, naïve, über, señor", LEFT_MARGIN, seg_y + LINE_SPACING, SMALL_SIZE, {0.7, 0.7, 0.9, 1.0})
 
