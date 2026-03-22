@@ -49,10 +49,18 @@ draw_text_rainbow :: proc(
 	font := active_font(ctx)
 	pen_x := x
 	char_idx := 0
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		hue := math.mod(time * speed + f32(char_idx) * spread, 360.0)
 		rgb := hsv_to_rgb(hue, 1.0, 1.0)
@@ -69,6 +77,7 @@ draw_text_rainbow :: proc(
 
 		pen_x += g.advance_width * font_size
 		char_idx += 1
+		prev_rune = ch
 	}
 }
 
@@ -89,10 +98,18 @@ draw_text_wobble :: proc(
 	font := active_font(ctx)
 	pen_x := x
 	char_idx := 0
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		y_offset := math.sin(time * frequency + f32(char_idx) * phase_step) * amplitude
 
@@ -107,6 +124,7 @@ draw_text_wobble :: proc(
 
 		pen_x += g.advance_width * font_size
 		char_idx += 1
+		prev_rune = ch
 	}
 }
 
@@ -125,10 +143,18 @@ draw_text_shake :: proc(
 	font := active_font(ctx)
 	pen_x := x
 	char_idx := 0
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		seed := f32(char_idx) * 7.13 + time * 31.7
 		dx := math.sin(seed * 3.7) * intensity
@@ -145,6 +171,7 @@ draw_text_shake :: proc(
 
 		pen_x += g.advance_width * font_size
 		char_idx += 1
+		prev_rune = ch
 	}
 }
 
@@ -172,10 +199,18 @@ draw_text_rotated :: proc(
 	}
 
 	pen_x: f32 = -total_w * 0.5
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		em_cx := (g.bbox_min.x + g.bbox_max.x) * 0.5
 		em_cy := (g.bbox_min.y + g.bbox_max.y) * 0.5
@@ -190,6 +225,7 @@ draw_text_rotated :: proc(
 		}
 
 		pen_x += g.advance_width * font_size
+		prev_rune = ch
 	}
 }
 
@@ -207,12 +243,21 @@ draw_text_on_circle :: proc(
 ) {
 	font := active_font(ctx)
 	pen_angle := start_angle
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
 
-		advance_arc := g.advance_width * font_size
+		kern_advance: f32 = 0
+		if prev_rune != 0 {
+			kern_advance = font_get_kerning(font, prev_rune, ch) * font_size
+		}
+
+		advance_arc := g.advance_width * font_size + kern_advance
 		char_angle := advance_arc / radius if abs(radius) > 1e-6 else 0
 
 		mid_angle := pen_angle + char_angle * 0.5
@@ -224,8 +269,8 @@ draw_text_on_circle :: proc(
 		sin_t := math.sin(tangent_angle)
 
 		xform := matrix[2, 2]f32{
-			cos_t * font_size, -sin_t * font_size, 
-			sin_t * font_size, cos_t * font_size, 
+			cos_t * font_size, -sin_t * font_size,
+			sin_t * font_size, cos_t * font_size,
 		}
 
 		if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
@@ -233,6 +278,7 @@ draw_text_on_circle :: proc(
 		}
 
 		pen_angle += char_angle
+		prev_rune = ch
 	}
 }
 
@@ -252,10 +298,18 @@ draw_text_on_wave :: proc(
 	font := active_font(ctx)
 	pen_x := x
 	freq := math.TAU / wavelength if abs(wavelength) > 1e-6 else 0
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		wave_y := amplitude * math.sin(freq * pen_x + phase)
 		slope := amplitude * freq * math.cos(freq * pen_x + phase)
@@ -265,8 +319,8 @@ draw_text_on_wave :: proc(
 		sin_t := math.sin(tangent_angle)
 
 		xform := matrix[2, 2]f32{
-			cos_t * font_size, -sin_t * font_size, 
-			sin_t * font_size, cos_t * font_size, 
+			cos_t * font_size, -sin_t * font_size,
+			sin_t * font_size, cos_t * font_size,
 		}
 
 		em_cx := (g.bbox_min.x + g.bbox_max.x) * 0.5
@@ -279,6 +333,7 @@ draw_text_on_wave :: proc(
 		}
 
 		pen_x += g.advance_width * font_size
+		prev_rune = ch
 	}
 }
 
@@ -382,10 +437,18 @@ draw_text_gradient :: proc(
 ) {
 	font := active_font(ctx)
 	pen_x := x
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		glyph_x := pen_x + g.bbox_min.x * font_size
 		glyph_y := y - g.bbox_max.y * font_size
@@ -405,6 +468,7 @@ draw_text_gradient :: proc(
 		}
 
 		pen_x += g.advance_width * font_size
+		prev_rune = ch
 	}
 }
 
@@ -426,23 +490,32 @@ draw_text_pulse :: proc(
 	font := active_font(ctx)
 	pen_x := x
 	char_idx := 0
+	prev_rune: rune = 0
 
 	for ch in text {
 		g := get_glyph(font, ch)
-		if g == nil do continue
+		if g == nil {
+			prev_rune = ch
+			continue
+		}
+
+		if prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
 
 		t := math.sin(time * frequency + f32(char_idx) * phase_step)
 		char_scale := 1.0 + t * scale_amount
 		scaled_size := font_size * char_scale
 
-		// Center the scaled glyph on where it would normally sit
-		center_x := pen_x + g.advance_width * font_size * 0.5
-		center_y := y
-
+		// Scale each glyph around its visual center (bbox midpoint at base size).
+		// This preserves exact character positions at scale=1.0 and grows/shrinks
+		// symmetrically without shifting the overall string layout.
+		em_cx   := (g.bbox_min.x + g.bbox_max.x) * 0.5
+		em_cy   := (g.bbox_min.y + g.bbox_max.y) * 0.5
 		glyph_w := (g.bbox_max.x - g.bbox_min.x) * scaled_size
 		glyph_h := (g.bbox_max.y - g.bbox_min.y) * scaled_size
-		glyph_x := center_x + g.bbox_min.x * scaled_size - (g.advance_width * scaled_size - g.advance_width * font_size) * 0.5
-		glyph_y := center_y - g.bbox_max.y * scaled_size
+		glyph_x := pen_x + em_cx * font_size - glyph_w * 0.5
+		glyph_y := y - em_cy * font_size - glyph_h * 0.5
 
 		if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
 			emit_glyph_quad(ctx, g, glyph_x, glyph_y, glyph_w, glyph_h, color)
@@ -450,6 +523,7 @@ draw_text_pulse :: proc(
 
 		pen_x += g.advance_width * font_size
 		char_idx += 1
+		prev_rune = ch
 	}
 }
 

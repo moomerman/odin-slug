@@ -583,7 +583,9 @@ draw_frame :: proc(r: ^Renderer) -> bool {
 
 		w := f32(r.swapchain_extent.width)
 		h := f32(r.swapchain_extent.height)
-		rect_pc := linalg.matrix_ortho3d_f32(0, w, h, 0, -1, 1)
+		// Same Y convention as the slug text pass — Vulkan NDC Y is flipped vs OpenGL,
+		// so ortho(0, w, 0, h) maps screen-space y=0 to top, y=h to bottom.
+		rect_pc := linalg.matrix_ortho3d_f32(0, w, 0, h, -1, 1)
 
 		vk.CmdBindPipeline(cmd, .GRAPHICS, r.rect_pipeline)
 		vk.CmdPushConstants(cmd, r.rect_pipeline_layout, {.VERTEX}, 0, size_of(matrix[4, 4]f32), &rect_pc)
