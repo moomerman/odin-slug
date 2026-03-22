@@ -30,8 +30,8 @@ import slug_vk "../../slug/backends/vulkan"
 // --- Window ---
 
 WINDOW_TITLE  :: "odin-slug Vulkan Demo"
-WINDOW_WIDTH  :: 1280
-WINDOW_HEIGHT :: 720
+WINDOW_WIDTH  :: 1600
+WINDOW_HEIGHT :: 900
 
 // --- Font paths ---
 
@@ -105,6 +105,7 @@ FX_GRADIENT_Y :: f32(145)
 FX_PULSE_Y    :: f32(193)
 FX_FADE_Y     :: f32(241)
 FX_XFORM_Y    :: f32(290)  // per-character transform callback demo
+FX_SUBSUP_Y   :: f32(338)  // subscript / superscript inline demo
 
 // Circle (orbital text + rotated text — no background shape in Vulkan demo)
 CIRCLE_CX :: f32(560)
@@ -411,6 +412,30 @@ main :: proc() {
 
 		wave_state := Wave_Hue_State{elapsed}
 		slug.draw_text_transformed(ctx, "Custom callback!", FX_X, FX_XFORM_Y, BODY_SIZE, COLOR_WHITE, wave_hue_xform, &wave_state)
+
+		// Subscript / superscript inline demo: "H₂O  x²"
+		{
+			font := slug.active_font(ctx)
+			px := FX_X
+
+			hw, _     := slug.measure_text(font, "H", SMALL_SIZE)
+			slug.draw_text(ctx, "H", px, FX_SUBSUP_Y, SMALL_SIZE, COLOR_WHITE)
+			px += hw
+
+			sub2w, _  := slug.measure_text(font, "2", SMALL_SIZE * slug.SUB_SCALE)
+			slug.draw_text_sub(ctx, "2", px, FX_SUBSUP_Y, SMALL_SIZE, {0.5, 0.85, 1.0, 1.0})
+			px += sub2w
+
+			ow, _     := slug.measure_text(font, "O", SMALL_SIZE)
+			slug.draw_text(ctx, "O", px, FX_SUBSUP_Y, SMALL_SIZE, COLOR_WHITE)
+			px += ow + 28
+
+			xw, _     := slug.measure_text(font, "x", SMALL_SIZE)
+			slug.draw_text(ctx, "x", px, FX_SUBSUP_Y, SMALL_SIZE, COLOR_WHITE)
+			px += xw
+
+			slug.draw_text_super(ctx, "2", px, FX_SUBSUP_Y, SMALL_SIZE, {1.0, 0.8, 0.35, 1.0})
+		}
 
 		// Circular orbit + rotated text
 		slug.draw_text_on_circle(

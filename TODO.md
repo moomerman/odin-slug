@@ -3,7 +3,7 @@
 Tracks both the feature roadmap and polish/cleanup work.
 Update after each session.
 
-Last updated: 2026-03-22
+Last updated: 2026-03-22 (session 2)
 
 ---
 
@@ -14,7 +14,10 @@ Last updated: 2026-03-22
 - [x] Underline / strikethrough (`draw_text_underlined`, `draw_text_strikethrough`)
 - [x] Font fallback chains (`font_set_fallback`, `get_glyph_fallback`)
 - [x] Per-character transform callback (`Glyph_Xform`, `draw_text_transformed`)
-- [x] Inline icons in rich text flow (`{icon:N}` markup tag)
+- [x] Inline icons in rich text flow (`{icon:N}` and `{icon:N:color}` markup tags)
+- [x] Hit testing (`text_hit_test`)
+- [x] Named styles / `Text_Style` struct (`draw_text_styled`, `measure_text_styled`)
+- [x] Justified alignment (`draw_text_justified`)
 
 ---
 
@@ -46,29 +49,7 @@ Last updated: 2026-03-22
 *(nothing)*
 
 ### Up Next
-- [ ] **#6 — Per-character transform callback**
-      `Glyph_Transform` struct + `draw_text_transformed` accepting a proc/closure called per
-      glyph with `(glyph_idx: int, pen_x: f32, time: f32, userdata: rawptr) -> Glyph_Transform`.
-      Subsumes many one-off effects and enables user-defined animations.
-
-- [ ] **#7 — Inline icons in rich text flow**
-      Extend `draw_rich_text` markup to embed SVG icons inline: `{icon:sword}` emits the icon
-      glyph at the current pen position, advancing correctly with the surrounding text.
-
-- [ ] **#8 — Hit testing**
-      `hit_test_text(font, text, x, y, font_size, mouse_x, mouse_y) -> (rune_index: int, hit: bool)`.
-      Maps a screen coordinate back to a character index. Needed for any interactive text UI.
-
-- [ ] **#9 — Named styles / Text_Style struct**
-      `Text_Style` struct carrying font slot, size, color, and decoration flags (underline,
-      strikethrough, bold-emulation). `draw_text_styled(ctx, text, x, y, style)` for clean
-      call sites in complex UIs.
-
-- [ ] **#10 — Justified alignment**
-      `draw_text_justified(ctx, text, x, y, font_size, column_width, color)`. Distributes
-      inter-word spacing to fill the column exactly. Completes the alignment family.
-
-- [ ] **#11 — Subscript / superscript**
+- [ ] **#11 — Subscript / superscript** *(implemented, pending review)*
       `draw_text_sub` / `draw_text_super`: draw at ~60% size, shifted down/up by ~35%/40% of
       the em-square. Useful for math notation, footnotes, chemical formulas.
 
@@ -79,6 +60,11 @@ Last updated: 2026-03-22
 - [ ] **#13 — Grid rendering mode (CP437)**
       `draw_text_grid(ctx, text, x, y, font_size, cell_w, cell_h, color)`. Fixed-width cells,
       each character centered. Primary use case: roguelike map tiles and stat columns.
+
+### Demo Infrastructure
+- [ ] **Pan/zoom** — WASD + middle-mouse pan across the demo canvas. Add a `camera_offset: [2]f32`
+      passed into `slug.begin()` (or subtracted in each draw call). Lets the layout grow beyond
+      the window without a fixed window size increase. Defer until after API settles.
 
 ### Near-Term Backends
 - [ ] **#16 — Sokol backend** (`slug_sokol`)

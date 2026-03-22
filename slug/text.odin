@@ -255,6 +255,41 @@ draw_text_right :: proc(
 	draw_text(ctx, text, x - w, y, font_size, color, use_kerning)
 }
 
+// Scale applied to the parent em-square for subscript and superscript text.
+// Pass font_size * SUB_SCALE to measure_text to get the sub/super advance width.
+SUB_SCALE :: f32(0.60)
+
+// Baseline shift for subscript text, as a fraction of the parent font_size.
+// draw_text_sub shifts the baseline DOWN by SUB_SHIFT * font_size.
+SUB_SHIFT :: f32(0.35)
+
+// Baseline shift for superscript text, as a fraction of the parent font_size.
+// draw_text_super shifts the baseline UP by SUPER_SHIFT * font_size.
+SUPER_SHIFT :: f32(0.40)
+
+// Draw text as subscript: SUB_SCALE × font_size, shifted down by SUB_SHIFT × font_size.
+// x, y is the parent baseline — the same y you pass to draw_text for the surrounding text.
+// Use measure_text with font_size * SUB_SCALE to compute the advance and position
+// whatever follows. Example — "H₂O":
+//   hw, _ := slug.measure_text(font, "H", size)
+//   slug.draw_text(ctx, "H", x, y, size, c)
+//   slug.draw_text_sub(ctx, "2", x+hw, y, size, c)
+//   x2w, _ := slug.measure_text(font, "2", size * slug.SUB_SCALE)
+//   slug.draw_text(ctx, "O", x+hw+x2w, y, size, c)
+draw_text_sub :: proc(ctx: ^Context, text: string, x, y, font_size: f32, color: Color) {
+	draw_text(ctx, text, x, y + font_size * SUB_SHIFT, font_size * SUB_SCALE, color)
+}
+
+// Draw text as superscript: SUB_SCALE × font_size, shifted up by SUPER_SHIFT × font_size.
+// x, y is the parent baseline. Use measure_text with font_size * SUB_SCALE for advance width.
+// Example — "x²":
+//   xw, _ := slug.measure_text(font, "x", size)
+//   slug.draw_text(ctx, "x", x, y, size, c)
+//   slug.draw_text_super(ctx, "2", x+xw, y, size, c)
+draw_text_super :: proc(ctx: ^Context, text: string, x, y, font_size: f32, color: Color) {
+	draw_text(ctx, text, x, y - font_size * SUPER_SHIFT, font_size * SUB_SCALE, color)
+}
+
 // Draw text clipped to max_width pixels, appending "..." when truncated.
 // The ellipsis width is reserved from the budget first, so the total rendered
 // width always fits within max_width. If there is no room for any characters
