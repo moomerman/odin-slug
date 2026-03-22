@@ -12,11 +12,11 @@ import "core:unicode/utf8"
 
 // Snap a coordinate to the nearest pixel boundary.
 // Use this for grid-aligned UIs where you want pixel-perfect text:
-//   slug.draw_text(ctx, "HP: 100", slug.snap(x), slug.snap(y), size, color)
+//   slug.draw_text(ctx, "HP: 100", slug.coord_snap(x), slug.coord_snap(y), size, color)
 // Slug renders Bezier curves per-pixel, so subpixel positioning works
 // naturally without quality loss. Snapping is optional and purely for
 // alignment with pixel-grid elements like tile maps or UI panels.
-snap :: proc(v: f32) -> f32 {
+coord_snap :: proc(v: f32) -> f32 {
 	return math.round(v)
 }
 
