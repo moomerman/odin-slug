@@ -1,6 +1,7 @@
 package slug
 
 import "core:math"
+import "core:unicode/utf8"
 
 // ===================================================
 // Text drawing and measurement — CPU-side vertex packing.
@@ -221,6 +222,67 @@ draw_text_right :: proc(
 	font := active_font(ctx)
 	w, _ := measure_text(font, text, font_size, use_kerning)
 	draw_text(ctx, text, x - w, y, font_size, color, use_kerning)
+}
+
+// Draw text clipped to max_width pixels, appending "..." when truncated.
+// The ellipsis width is reserved from the budget first, so the total rendered
+// width always fits within max_width. If there is no room for any characters
+// before the ellipsis, the ellipsis alone is drawn.
+// Returns the pixel width actually drawn (useful for follow-on layout).
+//
+// Example:
+//   // Clip a long item name to fit inside a UI panel column
+//   slug.draw_text_truncated(ctx, item.name, x, y, size, column_width, color)
+draw_text_truncated :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	max_width: f32,
+	color: Color,
+	use_kerning: bool = true,
+) -> f32 {
+	font := active_font(ctx)
+
+	// Fast path: text fits as-is
+	full_w, _ := measure_text(font, text, font_size, use_kerning)
+	if full_w <= max_width {
+		draw_text(ctx, text, x, y, font_size, color, use_kerning)
+		return full_w
+	}
+
+	ELLIPSIS :: "..."
+	ellipsis_w, _ := measure_text(font, ELLIPSIS, font_size)
+	budget := max_width - ellipsis_w
+
+	if budget <= 0 {
+		// No room for any chars before the ellipsis
+		draw_text(ctx, ELLIPSIS, x, y, font_size, color)
+		return ellipsis_w
+	}
+
+	// Walk characters accumulating width until we exceed budget
+	pen_x: f32 = 0
+	prev_rune: rune = 0
+	byte_end := 0
+
+	for ch, i in text {
+		g := get_glyph(font, ch)
+		kern: f32 = 0
+		if g != nil && use_kerning && prev_rune != 0 {
+			kern = font_get_kerning(font, prev_rune, ch) * font_size
+		}
+		advance := kern + (g.advance_width * font_size if g != nil else 0)
+		if pen_x + advance > budget do break
+		pen_x += advance
+		_, ch_size := utf8.decode_rune_in_string(text[i:])
+		byte_end = i + ch_size
+		prev_rune = ch
+	}
+
+	draw_text(ctx, text[:byte_end], x, y, font_size, color, use_kerning)
+	draw_text(ctx, ELLIPSIS, x + pen_x, y, font_size, color)
+	return pen_x + ellipsis_w
 }
 
 // Draw text with automatic word wrapping within max_width pixels.

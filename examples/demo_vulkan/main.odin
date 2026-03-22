@@ -113,6 +113,9 @@ RIGHT_X :: f32(800)
 
 ZOOM_Y :: f32(200)  // pulsing-size "Zoom!" text
 
+TRUNCATE_Y     :: f32(255)  // truncated text demo
+TRUNCATE_MAX_W :: f32(240)  // clip boundary in pixels
+
 GRID_Y :: f32(310)  // monospace grid demo
 
 ALIGN_X  :: f32(1050)  // x anchor for all three alignment variants
@@ -397,6 +400,10 @@ main :: proc() {
 		// Pulsing size text
 		pulse_size := 60.0 + math.sin(elapsed * 1.5) * 20.0
 		slug.draw_text(ctx, "Zoom!", RIGHT_X + 10, ZOOM_Y, f32(pulse_size), {1.0, 0.5, 0.3, 1.0})
+
+		// Truncated text: long string clipped at TRUNCATE_MAX_W with "..."
+		slug.draw_text(ctx, "clip:", RIGHT_X + 10, TRUNCATE_Y - 18, 12, {0.4, 0.4, 0.5, 1.0})
+		slug.draw_text_truncated(ctx, "This long name gets clipped with an ellipsis", RIGHT_X + 10, TRUNCATE_Y, SMALL_SIZE, TRUNCATE_MAX_W, COLOR_WHITE)
 
 		// Monospace grid
 		cell_w    := slug.mono_width(font, SMALL_SIZE)
