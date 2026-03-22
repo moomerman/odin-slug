@@ -493,6 +493,79 @@ draw_rect :: proc(ctx: ^Context, x, y, w, h: f32, color: Color) {
 	ctx.rect_count += 1
 }
 
+// Draw text justified to exactly fill column_width pixels.
+// Inter-word spacing is expanded uniformly so the first word starts at x and
+// the last word ends at x+column_width. If the text already meets or exceeds
+// column_width, it is drawn left-aligned without modification (no compression).
+// Single spaces in the source text mark word boundaries; multiple spaces are
+// collapsed. A string with no spaces (one word) is drawn left-aligned.
+//
+// This completes the alignment family alongside draw_text_centered and
+// draw_text_right. For multi-line justified text, see draw_text_wrapped.
+//
+// Example — fill a fixed-width UI column:
+//   slug.draw_text_justified(ctx, line, x, y, size, column_w, color)
+draw_text_justified :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	column_width: f32,
+	color: Color,
+	use_kerning: bool = true,
+) {
+	font := active_font(ctx)
+	space_w := char_advance(font, ' ', font_size)
+
+	// Collect words (split on spaces)
+	Word :: struct { text: string, width: f32 }
+	words: [dynamic]Word
+	defer delete(words)
+
+	i := 0
+	for i < len(text) {
+		// Skip spaces
+		for i < len(text) && text[i] == ' ' { i += 1 }
+		if i >= len(text) { break }
+
+		// Find word end
+		word_start := i
+		for i < len(text) && text[i] != ' ' { i += 1 }
+		word := text[word_start:i]
+		w, _ := measure_text(font, word, font_size, use_kerning)
+		append(&words, Word{word, w})
+	}
+
+	if len(words) == 0 { return }
+
+	// Natural width: sum of word widths + spaces between them
+	total_word_w: f32
+	for word in words { total_word_w += word.width }
+	natural_w := total_word_w + space_w * f32(len(words) - 1)
+
+	// If text fills or overflows, draw left-aligned
+	gaps := len(words) - 1
+	if gaps <= 0 || natural_w >= column_width {
+		pen_x := x
+		for word in words {
+			draw_text(ctx, word.text, pen_x, y, font_size, color, use_kerning)
+			pen_x += word.width + space_w
+		}
+		return
+	}
+
+	// Distribute extra space across the gaps
+	extra_per_gap := (column_width - natural_w) / f32(gaps)
+	expanded_space := space_w + extra_per_gap
+
+	pen_x := x
+	for word, wi in words {
+		draw_text(ctx, word.text, pen_x, y, font_size, color, use_kerning)
+		pen_x += word.width
+		if wi < gaps { pen_x += expanded_space }
+	}
+}
+
 // Draw text with a solid background color behind it.
 // x, y is the baseline-left position (same convention as draw_text).
 // The background rect spans the full line height (ascent to descent) and

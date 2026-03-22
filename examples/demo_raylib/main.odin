@@ -112,22 +112,25 @@ CIRCLE_R  :: 80
 
 RIGHT_X :: f32(800)
 
-ZOOM_Y :: f32(200)  // pulsing-size "Zoom!" text
+ZOOM_Y :: f32(240)  // pulsing-size "Zoom!" text — shifted down so ascenders don't hit fallback/justify
 
-TRUNCATE_Y     :: f32(255)  // truncated text demo
+TRUNCATE_Y     :: f32(295)  // truncated text demo
 TRUNCATE_MAX_W :: f32(240)  // clip boundary in pixels
 
-GRID_Y :: f32(310)  // monospace grid demo
+GRID_Y :: f32(350)  // monospace grid demo
 
 ALIGN_X  :: f32(1050)  // x anchor for all three alignment variants
 ALIGN_Y0 :: f32(62)    // left-aligned
 ALIGN_Y1 :: f32(87)    // centered
 ALIGN_Y2 :: f32(112)   // right-aligned
 
-FALLBACK_Y :: f32(155) // fallback chain demo (sans + auto-serif for missing codepoints)
+FALLBACK_Y :: f32(137) // fallback chain demo (sans + auto-serif for missing codepoints)
+
+JUSTIFY_Y :: f32(160)  // justified alignment demo
+JUSTIFY_W :: f32(380)  // column width — text expands to fill this exactly
 
 WRAP_W   :: f32(420)
-WRAP_Y   :: f32(365)
+WRAP_Y   :: f32(410)
 WRAP_PAD :: f32(8)
 
 SCROLL_W :: f32(420)
@@ -517,6 +520,9 @@ main :: proc() {
 		// Fallback chain demo: font 0 lacks Latin Extended-A (256-383), font 1 has it.
 		// Drawing with font 0 active: ASCII renders sans-serif, Ş ž Ő render in serif.
 		slug.draw_text(ctx, "Fallback: Ş ž Ő ę ĺ (font 0 → serif)", RIGHT_X, FALLBACK_Y, SMALL_SIZE, {0.7, 0.9, 0.7, 1.0})
+
+		// Justified alignment
+		slug.draw_text_justified(ctx, "Word justification fills the column width exactly.", RIGHT_X, JUSTIFY_Y, SMALL_SIZE, JUSTIFY_W, {0.9, 0.8, 0.6, 1.0})
 
 		// Word wrap
 		slug.draw_text_wrapped(ctx, WRAP_TEXT, RIGHT_X + WRAP_PAD, WRAP_Y + WRAP_PAD, SMALL_SIZE, WRAP_W - WRAP_PAD * 2, COLOR_WHITE)
