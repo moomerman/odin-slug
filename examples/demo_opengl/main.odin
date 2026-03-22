@@ -103,6 +103,7 @@ FX_X          :: f32(420)  // animated effect text left edge
 FX_GRADIENT_Y :: f32(145)
 FX_PULSE_Y    :: f32(193)
 FX_FADE_Y     :: f32(241)
+FX_XFORM_Y    :: f32(290)  // per-character transform callback demo
 
 // Circle (orbital text + rotated text — no background shape in GL)
 CIRCLE_CX :: f32(560)
@@ -142,6 +143,22 @@ SCALE_Y :: f32(700)
 COLOR_WHITE  :: [4]f32{1.0, 1.0, 1.0, 1.0}
 COLOR_YELLOW :: [4]f32{1.0, 0.9, 0.3, 1.0}
 COLOR_CYAN   :: [4]f32{0.3, 0.9, 1.0, 1.0}
+
+Wave_Hue_State :: struct {
+	time: f32,
+}
+
+wave_hue_xform :: proc(char_idx: int, ch: rune, pen_x, y: f32, userdata: rawptr) -> slug.Glyph_Xform {
+	state := (^Wave_Hue_State)(userdata)
+	phase := f32(char_idx) * 0.7
+	bob   := math.sin(state.time * 4.0 + phase) * 7.0
+	hue   := math.mod(state.time * 90.0 + f32(char_idx) * 35.0, 360.0)
+	rgb   := slug.hsv_to_rgb(hue, 0.85, 1.0)
+	return slug.Glyph_Xform{
+		offset = {0, -bob},
+		color  = {rgb.x, rgb.y, rgb.z, 1.0},
+	}
+}
 
 main :: proc() {
 	// -----------------------------------------------
@@ -413,6 +430,9 @@ main :: proc() {
 		slug.draw_text_pulse(ctx, "Pulsing!", FX_X, FX_PULSE_Y, BODY_SIZE, COLOR_CYAN, time = elapsed)
 		fade_alpha := (math.sin(elapsed * 2.0) + 1.0) * 0.5
 		slug.draw_text_fade(ctx, "Fading in and out...", FX_X, FX_FADE_Y, SMALL_SIZE, COLOR_WHITE, fade_alpha)
+
+		wave_state := Wave_Hue_State{elapsed}
+		slug.draw_text_transformed(ctx, "Custom callback!", FX_X, FX_XFORM_Y, BODY_SIZE, COLOR_WHITE, wave_hue_xform, &wave_state)
 
 		// Circular orbit + rotated text (no background circle in GL demo)
 		slug.draw_text_on_circle(

@@ -532,6 +532,94 @@ draw_text_strikethrough :: proc(
 	draw_text(ctx, text, x, y, font_size, color, use_kerning)
 }
 
+// Draw text with a per-glyph transform callback.
+// xform_proc is called once per glyph and returns a Glyph_Xform that modifies
+// offset, scale, rotation, and color independently per character. Pass any
+// animation state (time, counters, etc.) through userdata.
+//
+// The identity transform (return {}) renders identically to draw_text.
+// Rotation and scale are applied around the glyph's visual center (bbox midpoint),
+// not the advance-slot center, so the layout stays correct at any scale.
+//
+// Example — a simple wave effect:
+//   Wave :: struct { time: f32 }
+//   my_wave :: proc(i: int, ch: rune, px, y: f32, ud: rawptr) -> slug.Glyph_Xform {
+//       w := (^Wave)(ud)
+//       return slug.Glyph_Xform{ offset = {0, -math.sin(w.time * 4 + f32(i) * 0.6) * 8} }
+//   }
+//   wave := Wave{elapsed}
+//   slug.draw_text_transformed(ctx, "Hello!", x, y, size, color, my_wave, &wave)
+draw_text_transformed :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	color: Color,
+	xform_proc: Glyph_Xform_Proc,
+	userdata: rawptr = nil,
+	use_kerning: bool = true,
+) {
+	font := active_font(ctx)
+	pen_x := x
+	prev_rune: rune = 0
+	char_idx := 0
+
+	for ch in text {
+		g := get_glyph_fallback(ctx, ch)
+		if g == nil {
+			prev_rune = ch
+			char_idx += 1
+			continue
+		}
+
+		if use_kerning && prev_rune != 0 {
+			pen_x += font_get_kerning(font, prev_rune, ch) * font_size
+		}
+
+		xform := xform_proc(char_idx, ch, pen_x, y, userdata)
+
+		// Resolve identity defaults: scale=0 → 1.0, color.a=0 → parent color
+		effective_scale := xform.scale if xform.scale != 0 else 1.0
+		effective_color := xform.color if xform.color.a > 0 else color
+		scaled_size := font_size * effective_scale
+
+		// Glyph visual center in screen space (at base font_size, before scaling).
+		// Scale and rotation are applied around this point so glyphs grow/rotate
+		// in place rather than drifting away from the baseline.
+		em_cx := (g.bbox_min.x + g.bbox_max.x) * 0.5
+		em_cy := (g.bbox_min.y + g.bbox_max.y) * 0.5
+
+		if xform.angle != 0 {
+			// Rotated path: use the transformed quad emitter.
+			cos_a := math.cos(xform.angle)
+			sin_a := math.sin(xform.angle)
+			xf := matrix[2, 2]f32{
+				cos_a * scaled_size, -sin_a * scaled_size,
+				sin_a * scaled_size,  cos_a * scaled_size,
+			}
+			center_x := pen_x + em_cx * font_size + xform.offset.x
+			center_y := y - em_cy * font_size + xform.offset.y
+			if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
+				emit_glyph_quad_transformed(ctx, g, center_x, center_y, xf, effective_color)
+			}
+		} else {
+			// Axis-aligned path: scale around visual center, apply offset.
+			// At effective_scale=1 and offset={0,0} this is identical to draw_text.
+			glyph_w := (g.bbox_max.x - g.bbox_min.x) * scaled_size
+			glyph_h := (g.bbox_max.y - g.bbox_min.y) * scaled_size
+			glyph_x := pen_x + em_cx * font_size - glyph_w * 0.5 + xform.offset.x
+			glyph_y := y - em_cy * font_size - glyph_h * 0.5 + xform.offset.y
+			if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
+				emit_glyph_quad(ctx, g, glyph_x, glyph_y, glyph_w, glyph_h, effective_color)
+			}
+		}
+
+		pen_x += g.advance_width * font_size
+		prev_rune = ch
+		char_idx += 1
+	}
+}
+
 // Helper: return the background rect dimensions for a text string.
 // Use this when you need to position the rect yourself (e.g. with padding):
 //   rx, ry, rw, rh := slug.text_bg_rect(font, text, x, y, size)

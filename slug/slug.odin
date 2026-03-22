@@ -67,6 +67,34 @@ CUBIC_TO_QUAD_TOLERANCE :: f32(0.001)
 // RGBA color as 4 floats (0.0–1.0 per channel).
 Color :: [4]f32
 
+// Per-glyph transform returned by a Glyph_Xform_Proc callback.
+// The zero value is the identity transform — returning {} from a callback
+// draws the glyph exactly as draw_text would, with no changes.
+//
+// Fields:
+//   offset — pixel nudge from the natural pen position. {0,0} = no move.
+//   scale  — multiplier on font_size. 0 is treated as 1.0 (identity).
+//   angle  — rotation in radians around the glyph's visual center. 0 = upright.
+//   color  — per-glyph color. alpha=0 inherits the color passed to draw_text_transformed.
+Glyph_Xform :: struct {
+	offset: [2]f32,
+	scale:  f32,
+	angle:  f32,
+	color:  Color,
+}
+
+// Callback type for draw_text_transformed.
+// Called once per glyph in the string.
+//
+//   char_idx — 0-based rune index in the string
+//   ch       — the Unicode codepoint
+//   pen_x    — natural x position where the glyph would be drawn (baseline-left)
+//   y        — baseline y position
+//   userdata — pointer passed through from the draw call (carry time, state, etc.)
+//
+// Return a Glyph_Xform to modify the glyph. Return {} for identity (no change).
+Glyph_Xform_Proc :: #type proc(char_idx: int, ch: rune, pen_x, y: f32, userdata: rawptr) -> Glyph_Xform
+
 // Common color constants.
 WHITE       :: Color{1.0, 1.0, 1.0, 1.0}
 BLACK       :: Color{0.0, 0.0, 0.0, 1.0}
