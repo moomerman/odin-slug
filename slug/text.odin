@@ -563,6 +563,55 @@ draw_text_strikethrough :: proc(
 	draw_text(ctx, text, x, y, font_size, color, use_kerning)
 }
 
+// Draw text using a Text_Style bundle.
+// Switches to style.font_slot for the duration of the call, then restores the
+// previous active font. Underline and strikethrough are drawn in a single pass
+// so both can be active simultaneously.
+// Returns the pixel width drawn, for follow-on layout.
+draw_text_styled :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	style: Text_Style,
+	use_kerning: bool = true,
+) -> f32 {
+	prev_slot := ctx.active_font_idx
+	if style.font_slot != prev_slot {
+		use_font(ctx, style.font_slot)
+	}
+
+	font := active_font(ctx)
+	w, _ := measure_text(font, text, style.size, use_kerning)
+	thickness := max(math.round(style.size * 0.05), 1.0)
+
+	if style.underline {
+		draw_rect(ctx, x, y + style.size * 0.1, w, thickness, style.color)
+	}
+	if style.strikethrough {
+		draw_rect(ctx, x, y - style.size * 0.3, w, thickness, style.color)
+	}
+	draw_text(ctx, text, x, y, style.size, style.color, use_kerning)
+
+	if style.font_slot != prev_slot {
+		use_font(ctx, prev_slot)
+	}
+	return w
+}
+
+// Measure a string as it would be drawn by draw_text_styled.
+// Accesses the font for style.font_slot directly without switching the active
+// font, so it can be called freely during a frame without affecting draw batches.
+measure_text_styled :: proc(
+	ctx: ^Context,
+	text: string,
+	style: Text_Style,
+	use_kerning: bool = true,
+) -> (width, height: f32) {
+	if style.font_slot < 0 || style.font_slot >= MAX_FONT_SLOTS do return 0, 0
+	font := &ctx.fonts[style.font_slot]
+	return measure_text(font, text, style.size, use_kerning)
+}
+
 // Draw text with a per-glyph transform callback.
 // xform_proc is called once per glyph and returns a Glyph_Xform that modifies
 // offset, scale, rotation, and color independently per character. Pass any

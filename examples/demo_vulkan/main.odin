@@ -145,6 +145,10 @@ COLOR_WHITE  :: [4]f32{1.0, 1.0, 1.0, 1.0}
 COLOR_YELLOW :: [4]f32{1.0, 0.9, 0.3, 1.0}
 COLOR_CYAN   :: [4]f32{0.3, 0.9, 1.0, 1.0}
 
+STYLE_UNDERLINE :: slug.Text_Style{size = SMALL_SIZE, color = COLOR_WHITE,  underline = true}
+STYLE_STRIKE    :: slug.Text_Style{size = SMALL_SIZE, color = COLOR_YELLOW, strikethrough = true}
+STYLE_BOTH      :: slug.Text_Style{size = SMALL_SIZE, color = COLOR_CYAN,   underline = true, strikethrough = true}
+
 Wave_Hue_State :: struct {
 	time: f32,
 }
@@ -344,9 +348,10 @@ main :: proc() {
 		slug.draw_text(ctx, "This line uses Liberation Serif (font slot 1)", LEFT_X, ROW_SERIF, SMALL_SIZE, {0.9, 0.8, 0.6, 1.0})
 		slug.use_font(ctx, 0)
 
-		// Underline and strikethrough decorations
-		slug.draw_text_underlined(ctx, "Underlined", LEFT_X, ROW_DECORATION, SMALL_SIZE, COLOR_WHITE)
-		slug.draw_text_strikethrough(ctx, "Struck-out", LEFT_X + 160, ROW_DECORATION, SMALL_SIZE, COLOR_YELLOW)
+		// Text_Style demo: underline, strikethrough, and both simultaneously
+		slug.draw_text_styled(ctx, "Underlined", LEFT_X,       ROW_DECORATION, STYLE_UNDERLINE)
+		slug.draw_text_styled(ctx, "Struck-out", LEFT_X + 155, ROW_DECORATION, STYLE_STRIKE)
+		slug.draw_text_styled(ctx, "Both",       LEFT_X + 268, ROW_DECORATION, STYLE_BOTH)
 
 		// Cursor positioning demo
 		font := slug.active_font(ctx)

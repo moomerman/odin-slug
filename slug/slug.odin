@@ -67,6 +67,30 @@ CUBIC_TO_QUAD_TOLERANCE :: f32(0.001)
 // RGBA color as 4 floats (0.0–1.0 per channel).
 Color :: [4]f32
 
+// A bundle of text rendering properties for consistent styling across a UI.
+// Define named styles as package-level constants and pass them to
+// draw_text_styled / measure_text_styled to keep call sites clean:
+//
+//   BODY  :: slug.Text_Style{size = 24, color = slug.WHITE}
+//   ALERT :: slug.Text_Style{size = 24, color = slug.RED, underline = true}
+//
+//   slug.draw_text_styled(ctx, "Warning!", x, y, ALERT)
+//
+// font_slot:     Context font slot to draw with. 0 = primary font (zero-value default).
+// size:          em-square height in pixels. Must be set; 0 renders nothing.
+// color:         RGBA text color.
+// underline:     Draw an underline at ~10% em below the baseline.
+// strikethrough: Draw a strikethrough at ~30% em above the baseline.
+//
+// Both decorations can be true simultaneously — they are drawn in one pass.
+Text_Style :: struct {
+	font_slot:     int,
+	size:          f32,
+	color:         Color,
+	underline:     bool,
+	strikethrough: bool,
+}
+
 // Per-glyph transform returned by a Glyph_Xform_Proc callback.
 // The zero value is the identity transform — returning {} from a callback
 // draws the glyph exactly as draw_text would, with no changes.
