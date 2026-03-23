@@ -149,6 +149,9 @@ CLIP_TEXT_Y :: CLIP_BOX_Y + 29 // text baseline centered inside box
 
 SCALE_Y :: f32(820)
 
+// Camera pan speed in pixels/second for WASD keys
+CAMERA_SPEED :: f32(400.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -306,12 +309,17 @@ main :: proc() {
 	cursor_text := "Click to position cursor"
 	cursor_idx := 0
 
+	// Camera pan state
+	cam_x: f32 = 0
+	cam_y: f32 = 0
+
 	// -----------------------------------------------
 	// 6. Main game loop
 	// -----------------------------------------------
 
 	for !rl.WindowShouldClose() {
 		elapsed := f32(rl.GetTime())
+		dt := rl.GetFrameTime()
 		screen_w := rl.GetScreenWidth()
 		screen_h := rl.GetScreenHeight()
 		mouse_x := f32(rl.GetMouseX())
@@ -320,6 +328,25 @@ main :: proc() {
 		// UI scale
 		if rl.IsKeyPressed(.UP) do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
 		if rl.IsKeyPressed(.DOWN) do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+
+		// Camera pan — WASD keys
+		if rl.IsKeyDown(.W) do cam_y -= CAMERA_SPEED * dt
+		if rl.IsKeyDown(.S) do cam_y += CAMERA_SPEED * dt
+		if rl.IsKeyDown(.A) do cam_x -= CAMERA_SPEED * dt
+		if rl.IsKeyDown(.D) do cam_x += CAMERA_SPEED * dt
+
+		// Camera pan — middle mouse drag
+		if rl.IsMouseButtonDown(.MIDDLE) {
+			delta := rl.GetMouseDelta()
+			cam_x += delta.x
+			cam_y += delta.y
+		}
+
+		// Camera reset
+		if rl.IsKeyPressed(.R) {
+			cam_x = 0
+			cam_y = 0
+		}
 
 		// Cursor keyboard movement
 		if rl.IsKeyPressed(.LEFT) && cursor_idx > 0 do cursor_idx -= 1
@@ -334,8 +361,8 @@ main :: proc() {
 				LEFT_X,
 				ROW_CURSOR,
 				SMALL_SIZE,
-				mouse_x,
-				mouse_y,
+				mouse_x - cam_x,
+				mouse_y - cam_y,
 			); hit {
 				cursor_idx = idx
 			}
@@ -457,6 +484,7 @@ main :: proc() {
 		// No need to call rlgl.DrawRenderBatchActive() yourself.
 
 		slug.begin(ctx)
+		slug.set_camera(ctx, cam_x, cam_y)
 
 		// ---- Left column ----
 
@@ -845,7 +873,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]", ctx.ui_scale),
+			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,
@@ -855,8 +883,9 @@ main :: proc() {
 		slug.end(ctx)
 		slug_rl.flush(renderer, screen_w, screen_h) // pass 1: all main content, no scissor
 
-		// Pass 2: clipped panel text — the GPU cuts anything outside the box
+		// Pass 2: clipped panel text — scissor follows canvas pan
 		slug.begin(ctx)
+		slug.set_camera(ctx, cam_x, cam_y)
 		slug.draw_text(
 			ctx,
 			"GPU-clipped panel text overflows →",
@@ -871,8 +900,8 @@ main :: proc() {
 			screen_w,
 			screen_h,
 			scissor = slug.Scissor_Rect {
-				x = CLIP_BOX_X,
-				y = CLIP_BOX_Y,
+				x = CLIP_BOX_X + cam_x,
+				y = CLIP_BOX_Y + cam_y,
 				w = CLIP_BOX_W,
 				h = CLIP_BOX_H,
 			},

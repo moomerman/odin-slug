@@ -3,7 +3,7 @@
 Tracks both the feature roadmap and polish/cleanup work.
 Update after each session.
 
-Last updated: 2026-03-22 (session 4)
+Last updated: 2026-03-23 (session 6)
 
 ---
 
@@ -20,6 +20,7 @@ Last updated: 2026-03-22 (session 4)
 - [x] Justified alignment (`draw_text_justified`)
 - [x] Subscript / superscript (`draw_text_sub`, `draw_text_super`, `SUB_SCALE/SHIFT/SUPER_SHIFT` constants)
 - [x] GPU scissor clipping (`Scissor_Rect`, optional `scissor` param on `flush` / `present_frame`; multi-pass per frame)
+- [x] Camera pan (`camera_x/y` in `Context`, `set_camera(ctx, x, y)`; WASD + middle-mouse drag in demos, R to reset, scissor adjusted by cam offset)
 
 ---
 
@@ -51,14 +52,16 @@ Last updated: 2026-03-22 (session 4)
 *(nothing)*
 
 ### Up Next
+- [x] **#19 — Camera pan** *(done session 6)*
+
+- [ ] **#20 — Zoom toggle**
+      Tab key in the demos snaps `ui_scale` between 1.0x and a "fit-all" scale (≈0.6x) that shows
+      the full canvas in the window. Works on top of the existing Up/Down scale controls.
+      Implemented purely in demo code — no library changes needed.
+
 - [ ] **#13 — Grid rendering mode (CP437)**
       `draw_text_grid(ctx, text, x, y, font_size, cell_w, cell_h, color)`. Fixed-width cells,
       each character centered. Primary use case: roguelike map tiles and stat columns.
-
-### Demo Infrastructure
-- [ ] **Pan/zoom** — WASD + middle-mouse pan across the demo canvas. Add a `camera_offset: [2]f32`
-      passed into `slug.begin()` (or subtracted in each draw call). Lets the layout grow beyond
-      the window without a fixed window size increase. Defer until after API settles.
 
 ### Near-Term Backends
 - [ ] **#16 — Sokol backend** (`slug_sokol`)

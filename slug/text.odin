@@ -519,11 +519,13 @@ draw_rect :: proc(ctx: ^Context, x, y, w, h: f32, color: Color) {
 	if ctx.rect_count >= MAX_RECTS do return
 
 	base := ctx.rect_count * VERTICES_PER_QUAD
+	cx := x + ctx.camera_x
+	cy := y + ctx.camera_y
 
-	ctx.rect_vertices[base + 0] = Rect_Vertex{{x,     y    }, color}
-	ctx.rect_vertices[base + 1] = Rect_Vertex{{x + w, y    }, color}
-	ctx.rect_vertices[base + 2] = Rect_Vertex{{x + w, y + h}, color}
-	ctx.rect_vertices[base + 3] = Rect_Vertex{{x,     y + h}, color}
+	ctx.rect_vertices[base + 0] = Rect_Vertex{{cx,     cy    }, color}
+	ctx.rect_vertices[base + 1] = Rect_Vertex{{cx + w, cy    }, color}
+	ctx.rect_vertices[base + 2] = Rect_Vertex{{cx + w, cy + h}, color}
+	ctx.rect_vertices[base + 3] = Rect_Vertex{{cx,     cy + h}, color}
 
 	ctx.rect_count += 1
 }
@@ -846,10 +848,10 @@ emit_glyph_quad :: proc(ctx: ^Context, g: ^Glyph_Data, x, y, w, h: f32, color: C
 	jac_11 := -(em_h / h) if h > 0 else 0
 
 	corners := [4][2]f32 {
-		{x, y}, // TL
-		{x + w, y}, // TR
-		{x + w, y + h}, // BR
-		{x, y + h}, // BL
+		{x + ctx.camera_x,     y + ctx.camera_y},     // TL
+		{x + w + ctx.camera_x, y + ctx.camera_y},     // TR
+		{x + w + ctx.camera_x, y + h + ctx.camera_y}, // BR
+		{x + ctx.camera_x,     y + h + ctx.camera_y}, // BL
 	}
 
 	normals := [4][2]f32 {
@@ -940,7 +942,7 @@ emit_glyph_quad_transformed :: proc(
 		// expected layout. Encodes the screen-to-em-space transform so the shader
 		// can compute correct antialiasing distances under rotation/skew.
 		ctx.vertices[base + u32(vi)] = Vertex {
-			pos = {center_x + screen_off.x, center_y + screen_off.y, nx, ny},
+			pos = {center_x + ctx.camera_x + screen_off.x, center_y + ctx.camera_y + screen_off.y, nx, ny},
 			tex = {em_coords[vi].x, em_coords[vi].y, glyph_loc, band_max},
 			jac = {inv_jac[0, 0], inv_jac[0, 1], inv_jac[1, 0], inv_jac[1, 1]},
 			bnd = {g.band_scale.x, g.band_scale.y, g.band_offset.x, g.band_offset.y},

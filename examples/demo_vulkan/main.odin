@@ -152,6 +152,9 @@ CLIP_TEXT_Y :: CLIP_BOX_Y + 29 // text baseline centered inside box
 
 SCALE_Y :: f32(820)
 
+// Camera pan speed in pixels/second for WASD keys
+CAMERA_SPEED :: f32(400.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -293,12 +296,19 @@ main :: proc() {
 	cursor_text := "Click to position cursor"
 	cursor_idx := 0
 
+	// Camera pan state
+	cam_x: f32 = 0
+	cam_y: f32 = 0
+	mid_drag := false
+	wasd := [4]bool{} // W, A, S, D
+
 	// -----------------------------------------------
 	// 6. Main loop
 	// -----------------------------------------------
 
 	running := true
 	start_ticks := sdl.GetPerformanceCounter()
+	prev_ticks := start_ticks
 	freq := f64(sdl.GetPerformanceFrequency())
 
 	for running {
@@ -314,6 +324,17 @@ main :: proc() {
 				if key == sdl.K_RIGHT && cursor_idx < len(cursor_text) do cursor_idx += 1
 				if key == sdl.K_UP do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
 				if key == sdl.K_DOWN do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+				if key == sdl.K_W do wasd[0] = true
+				if key == sdl.K_A do wasd[1] = true
+				if key == sdl.K_S do wasd[2] = true
+				if key == sdl.K_D do wasd[3] = true
+				if key == sdl.K_R { cam_x = 0; cam_y = 0 }
+			case .KEY_UP:
+				key := event.key.key
+				if key == sdl.K_W do wasd[0] = false
+				if key == sdl.K_A do wasd[1] = false
+				if key == sdl.K_S do wasd[2] = false
+				if key == sdl.K_D do wasd[3] = false
 			case .MOUSE_WHEEL:
 				mx, my: f32
 				_ = sdl.GetMouseState(&mx, &my)
@@ -332,17 +353,28 @@ main :: proc() {
 			case .MOUSE_BUTTON_DOWN:
 				mx, my: f32
 				_ = sdl.GetMouseState(&mx, &my)
-				cursor_font := slug.active_font(ctx)
-				if idx, hit := slug.text_hit_test(
-					cursor_font,
-					cursor_text,
-					LEFT_X,
-					ROW_CURSOR,
-					SMALL_SIZE,
-					mx,
-					my,
-				); hit {
-					cursor_idx = idx
+				if event.button.button == sdl.BUTTON_MIDDLE {
+					mid_drag = true
+				} else {
+					cursor_font := slug.active_font(ctx)
+					if idx, hit := slug.text_hit_test(
+						cursor_font,
+						cursor_text,
+						LEFT_X,
+						ROW_CURSOR,
+						SMALL_SIZE,
+						mx - cam_x,
+						my - cam_y,
+					); hit {
+						cursor_idx = idx
+					}
+				}
+			case .MOUSE_BUTTON_UP:
+				if event.button.button == sdl.BUTTON_MIDDLE do mid_drag = false
+			case .MOUSE_MOTION:
+				if mid_drag {
+					cam_x += event.motion.xrel
+					cam_y += event.motion.yrel
 				}
 			case .WINDOW_RESIZED:
 				renderer.framebuffer_resized = true
@@ -350,11 +382,21 @@ main :: proc() {
 		}
 
 		now := sdl.GetPerformanceCounter()
+		dt := f32(f64(now - prev_ticks) / freq)
+		prev_ticks = now
 		elapsed := f32(f64(now - start_ticks) / freq)
+
+		// WASD camera pan (applied outside event loop with dt)
+		if wasd[0] do cam_y -= CAMERA_SPEED * dt
+		if wasd[1] do cam_x -= CAMERA_SPEED * dt
+		if wasd[2] do cam_y += CAMERA_SPEED * dt
+		if wasd[3] do cam_x += CAMERA_SPEED * dt
 
 		// --- Begin frame ---
 		// Returns false if the swapchain was out of date and was recreated — skip and retry.
 		if !slug_vk.begin_frame(renderer) do continue
+
+		slug.set_camera(ctx, cam_x, cam_y)
 
 		// ---- Left column ----
 
@@ -760,7 +802,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]", ctx.ui_scale),
+			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,
@@ -770,8 +812,8 @@ main :: proc() {
 		// --- Flush pass 1: all main content, no scissor ---
 		slug_vk.flush(renderer)
 
-		// --- Flush pass 2: clipped panel — text that overflows is cut at the box edge ---
-		// The draw_rect border above is already submitted; only the text is scissored here.
+		// --- Flush pass 2: clipped panel — scissor follows canvas pan ---
+		slug.set_camera(ctx, cam_x, cam_y)
 		slug.draw_text(
 			ctx,
 			"GPU-clipped panel text overflows →",
@@ -783,8 +825,8 @@ main :: proc() {
 		slug_vk.flush(
 			renderer,
 			scissor = slug.Scissor_Rect {
-				x = CLIP_BOX_X,
-				y = CLIP_BOX_Y,
+				x = CLIP_BOX_X + cam_x,
+				y = CLIP_BOX_Y + cam_y,
 				w = CLIP_BOX_W,
 				h = CLIP_BOX_H,
 			},

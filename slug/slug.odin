@@ -265,6 +265,12 @@ Context :: struct {
 	// Default: 1.0 (set in begin()).
 	ui_scale:        f32,
 
+	// Camera offset in pixels. Applied to all glyph and rect draw calls,
+	// shifting the entire canvas without touching layout coordinates.
+	// Use set_camera() to pan; reset with set_camera(ctx, 0, 0).
+	camera_x:        f32,
+	camera_y:        f32,
+
 	// Per-frame vertex buffer (CPU side — backends upload to GPU)
 	vertices:        [MAX_GLYPH_VERTICES]Vertex,
 	quad_count:      u32,
@@ -400,6 +406,13 @@ active_font :: proc(ctx: ^Context) -> ^Font {
 // "text size" slider.  1.0 = no scaling, 2.0 = double size, etc.
 set_ui_scale :: proc(ctx: ^Context, scale: f32) {
 	ctx.ui_scale = scale if scale > 0 else 1.0
+}
+
+// Set the camera offset. All draw calls are translated by (x, y) pixels.
+// Use for canvas pan effects. Call set_camera(ctx, 0, 0) to reset.
+set_camera :: proc(ctx: ^Context, x, y: f32) {
+	ctx.camera_x = x
+	ctx.camera_y = y
 }
 
 // Apply the context's UI scale to a logical font size.

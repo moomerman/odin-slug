@@ -151,6 +151,9 @@ CLIP_TEXT_Y :: CLIP_BOX_Y + 29 // text baseline centered inside box
 
 SCALE_Y :: f32(820)
 
+// Camera pan speed in pixels/second for WASD keys
+CAMERA_SPEED :: f32(400.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -312,11 +315,19 @@ main :: proc() {
 	})
 	glfw.SetWindowUserPointer(window, &scroll_accum)
 
+	// Camera pan state
+	cam_x: f32 = 0
+	cam_y: f32 = 0
+	prev_mid_mouse: i32 = glfw.RELEASE
+	prev_mid_mx: f64 = 0
+	prev_mid_my: f64 = 0
+
 	// -----------------------------------------------
 	// 6. Main render loop
 	// -----------------------------------------------
 
 	start_time := time.now()
+	prev_elapsed: f32 = 0
 
 	for !glfw.WindowShouldClose(window) {
 		glfw.PollEvents()
@@ -326,6 +337,8 @@ main :: proc() {
 		}
 
 		elapsed := f32(time.duration_seconds(time.since(start_time)))
+		dt := elapsed - prev_elapsed
+		prev_elapsed = elapsed
 		fb_w, fb_h := glfw.GetFramebufferSize(window)
 		mx, my := glfw.GetCursorPos(window)
 		mouse_x := f32(mx)
@@ -334,6 +347,28 @@ main :: proc() {
 		// UI scale (hold key to change smoothly)
 		if glfw.GetKey(window, glfw.KEY_UP) == glfw.PRESS do slug.set_ui_scale(ctx, ctx.ui_scale + 0.01)
 		if glfw.GetKey(window, glfw.KEY_DOWN) == glfw.PRESS do slug.set_ui_scale(ctx, ctx.ui_scale - 0.01)
+
+		// Camera pan — WASD keys (held)
+		if glfw.GetKey(window, glfw.KEY_W) == glfw.PRESS do cam_y -= CAMERA_SPEED * dt
+		if glfw.GetKey(window, glfw.KEY_S) == glfw.PRESS do cam_y += CAMERA_SPEED * dt
+		if glfw.GetKey(window, glfw.KEY_A) == glfw.PRESS do cam_x -= CAMERA_SPEED * dt
+		if glfw.GetKey(window, glfw.KEY_D) == glfw.PRESS do cam_x += CAMERA_SPEED * dt
+
+		// Camera pan — middle mouse drag
+		cur_mid_mouse := glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_MIDDLE)
+		if cur_mid_mouse == glfw.PRESS && prev_mid_mouse == glfw.PRESS {
+			cam_x += f32(mx - prev_mid_mx)
+			cam_y += f32(my - prev_mid_my)
+		}
+		prev_mid_mouse = cur_mid_mouse
+		prev_mid_mx = mx
+		prev_mid_my = my
+
+		// Camera reset
+		if glfw.GetKey(window, glfw.KEY_R) == glfw.PRESS {
+			cam_x = 0
+			cam_y = 0
+		}
 
 		// Cursor keyboard movement
 		if glfw.GetKey(window, glfw.KEY_LEFT) == glfw.PRESS && cursor_idx > 0 do cursor_idx -= 1
@@ -349,8 +384,8 @@ main :: proc() {
 				LEFT_X,
 				ROW_CURSOR,
 				SMALL_SIZE,
-				mouse_x,
-				mouse_y,
+				mouse_x - cam_x,
+				mouse_y - cam_y,
 			); hit {
 				cursor_idx = idx
 			}
@@ -382,6 +417,7 @@ main :: proc() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		slug.begin(ctx)
+		slug.set_camera(ctx, cam_x, cam_y)
 
 		// ---- Left column ----
 
@@ -786,7 +822,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]", ctx.ui_scale),
+			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,
@@ -796,9 +832,10 @@ main :: proc() {
 		slug.end(ctx)
 		slug_gl.flush(renderer, fb_w, fb_h) // pass 1: all main content, no scissor
 
-		// Pass 2: clipped panel text — text that overflows is cut at the box edge by the GPU
+		// Pass 2: clipped panel text — scissor follows canvas pan
 		slug.begin(ctx)
 		slug.use_font(ctx, 0)
+		slug.set_camera(ctx, cam_x, cam_y)
 		slug.draw_text(
 			ctx,
 			"GPU-clipped panel text overflows →",
@@ -813,8 +850,8 @@ main :: proc() {
 			fb_w,
 			fb_h,
 			scissor = slug.Scissor_Rect {
-				x = CLIP_BOX_X,
-				y = CLIP_BOX_Y,
+				x = CLIP_BOX_X + cam_x,
+				y = CLIP_BOX_Y + cam_y,
 				w = CLIP_BOX_W,
 				h = CLIP_BOX_H,
 			},
