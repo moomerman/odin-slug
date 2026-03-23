@@ -155,6 +155,12 @@ SCALE_Y :: f32(820)
 // Camera pan speed in pixels/second for WASD keys
 CAMERA_SPEED :: f32(400.0)
 
+// Zoom
+ZOOM_WHEEL_STEP :: f32(0.1)
+ZOOM_FIT_SCALE  :: f32(0.6)
+ZOOM_MIN        :: f32(0.25)
+ZOOM_MAX        :: f32(3.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -322,8 +328,9 @@ main :: proc() {
 				if key == sdl.K_ESCAPE do running = false
 				if key == sdl.K_LEFT && cursor_idx > 0 do cursor_idx -= 1
 				if key == sdl.K_RIGHT && cursor_idx < len(cursor_text) do cursor_idx += 1
-				if key == sdl.K_UP do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
-				if key == sdl.K_DOWN do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+				if key == sdl.K_UP   do slug.set_ui_scale(ctx, clamp(ctx.ui_scale + 0.25, ZOOM_MIN, ZOOM_MAX))
+				if key == sdl.K_DOWN  do slug.set_ui_scale(ctx, clamp(ctx.ui_scale - 0.25, ZOOM_MIN, ZOOM_MAX))
+				if key == sdl.K_TAB   do slug.set_ui_scale(ctx, ZOOM_FIT_SCALE if ctx.ui_scale != ZOOM_FIT_SCALE else 1.0)
 				if key == sdl.K_W do wasd[0] = true
 				if key == sdl.K_A do wasd[1] = true
 				if key == sdl.K_S do wasd[2] = true
@@ -349,6 +356,8 @@ main :: proc() {
 				   my >= scroll_region.y &&
 				   my <= scroll_region.y + scroll_region.height {
 					slug.scroll_by(&scroll_region, -event.wheel.y * 20.0, scroll_content_h)
+				} else {
+					slug.set_ui_scale(ctx, clamp(ctx.ui_scale + event.wheel.y * ZOOM_WHEEL_STEP, ZOOM_MIN, ZOOM_MAX))
 				}
 			case .MOUSE_BUTTON_DOWN:
 				mx, my: f32
@@ -802,7 +811,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
+			fmt.tprintf("Scale: %.2fx [Up/Down/Wheel/Tab]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,

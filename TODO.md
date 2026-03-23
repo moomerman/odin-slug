@@ -53,11 +53,8 @@ Last updated: 2026-03-23 (session 6)
 
 ### Up Next
 - [x] **#19 — Camera pan** *(done session 6)*
+- [x] **#20 — Zoom toggle** *(done session 6)* Tab snaps 1.0x↔0.6x; mouse wheel zooms when not over scroll region; Up/Down/wheel all clamped to [0.25, 3.0]x
 
-- [ ] **#20 — Zoom toggle**
-      Tab key in the demos snaps `ui_scale` between 1.0x and a "fit-all" scale (≈0.6x) that shows
-      the full canvas in the window. Works on top of the existing Up/Down scale controls.
-      Implemented purely in demo code — no library changes needed.
 
 - [ ] **#13 — Grid rendering mode (CP437)**
       `draw_text_grid(ctx, text, x, y, font_size, cell_w, cell_h, color)`. Fixed-width cells,

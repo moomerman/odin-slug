@@ -154,6 +154,12 @@ SCALE_Y :: f32(820)
 // Camera pan speed in pixels/second for WASD keys
 CAMERA_SPEED :: f32(400.0)
 
+// Zoom
+ZOOM_WHEEL_STEP :: f32(0.1)
+ZOOM_FIT_SCALE  :: f32(0.6)
+ZOOM_MIN        :: f32(0.25)
+ZOOM_MAX        :: f32(3.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -321,6 +327,7 @@ main :: proc() {
 	prev_mid_mouse: i32 = glfw.RELEASE
 	prev_mid_mx: f64 = 0
 	prev_mid_my: f64 = 0
+	prev_tab_key: i32 = glfw.RELEASE
 
 	// -----------------------------------------------
 	// 6. Main render loop
@@ -344,9 +351,14 @@ main :: proc() {
 		mouse_x := f32(mx)
 		mouse_y := f32(my)
 
-		// UI scale (hold key to change smoothly)
-		if glfw.GetKey(window, glfw.KEY_UP) == glfw.PRESS do slug.set_ui_scale(ctx, ctx.ui_scale + 0.01)
-		if glfw.GetKey(window, glfw.KEY_DOWN) == glfw.PRESS do slug.set_ui_scale(ctx, ctx.ui_scale - 0.01)
+		// UI scale — Up/Down hold, Tab toggle, clamped
+		if glfw.GetKey(window, glfw.KEY_UP) == glfw.PRESS   do slug.set_ui_scale(ctx, clamp(ctx.ui_scale + 0.01, ZOOM_MIN, ZOOM_MAX))
+		if glfw.GetKey(window, glfw.KEY_DOWN) == glfw.PRESS do slug.set_ui_scale(ctx, clamp(ctx.ui_scale - 0.01, ZOOM_MIN, ZOOM_MAX))
+		cur_tab := glfw.GetKey(window, glfw.KEY_TAB)
+		if cur_tab == glfw.PRESS && prev_tab_key == glfw.RELEASE {
+			slug.set_ui_scale(ctx, ZOOM_FIT_SCALE if ctx.ui_scale != ZOOM_FIT_SCALE else 1.0)
+		}
+		prev_tab_key = cur_tab
 
 		// Camera pan — WASD keys (held)
 		if glfw.GetKey(window, glfw.KEY_W) == glfw.PRESS do cam_y -= CAMERA_SPEED * dt
@@ -392,22 +404,22 @@ main :: proc() {
 		}
 		prev_mouse_btn = current_mouse_btn
 
-		// Scroll region: mouse wheel when hovering
+		// Scroll region: mouse wheel scrolls text when hovering, else zooms canvas
 		scroll_content_h := slug.measure_text_wrapped(
 			ctx,
 			SCROLL_TEXT,
 			SMALL_SIZE,
 			scroll_region.width,
 		)
-		if mouse_x >= scroll_region.x &&
-		   mouse_x <= scroll_region.x + scroll_region.width &&
-		   mouse_y >= scroll_region.y &&
-		   mouse_y <= scroll_region.y + scroll_region.height {
-			if scroll_accum != 0 {
+		if scroll_accum != 0 {
+			if mouse_x >= scroll_region.x &&
+			   mouse_x <= scroll_region.x + scroll_region.width &&
+			   mouse_y >= scroll_region.y &&
+			   mouse_y <= scroll_region.y + scroll_region.height {
 				slug.scroll_by(&scroll_region, f32(-scroll_accum) * 20.0, scroll_content_h)
-				scroll_accum = 0
+			} else {
+				slug.set_ui_scale(ctx, clamp(ctx.ui_scale + f32(scroll_accum) * ZOOM_WHEEL_STEP, ZOOM_MIN, ZOOM_MAX))
 			}
-		} else {
 			scroll_accum = 0
 		}
 
@@ -822,7 +834,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
+			fmt.tprintf("Scale: %.2fx [Up/Down/Wheel/Tab]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,

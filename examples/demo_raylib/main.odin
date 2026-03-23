@@ -152,6 +152,12 @@ SCALE_Y :: f32(820)
 // Camera pan speed in pixels/second for WASD keys
 CAMERA_SPEED :: f32(400.0)
 
+// Zoom
+ZOOM_WHEEL_STEP :: f32(0.1)  // scale change per mouse wheel notch
+ZOOM_FIT_SCALE  :: f32(0.6)  // Tab "fit-all" scale
+ZOOM_MIN        :: f32(0.25)
+ZOOM_MAX        :: f32(3.0)
+
 // --- Colors ---
 
 COLOR_WHITE :: [4]f32{1.0, 1.0, 1.0, 1.0}
@@ -325,9 +331,12 @@ main :: proc() {
 		mouse_x := f32(rl.GetMouseX())
 		mouse_y := f32(rl.GetMouseY())
 
-		// UI scale
-		if rl.IsKeyPressed(.UP) do slug.set_ui_scale(ctx, ctx.ui_scale + 0.25)
-		if rl.IsKeyPressed(.DOWN) do slug.set_ui_scale(ctx, ctx.ui_scale - 0.25)
+		// UI scale — Up/Down keys, Tab toggle, clamped
+		if rl.IsKeyPressed(.UP)  do slug.set_ui_scale(ctx, clamp(ctx.ui_scale + 0.25, ZOOM_MIN, ZOOM_MAX))
+		if rl.IsKeyPressed(.DOWN) do slug.set_ui_scale(ctx, clamp(ctx.ui_scale - 0.25, ZOOM_MIN, ZOOM_MAX))
+		if rl.IsKeyPressed(.TAB) {
+			slug.set_ui_scale(ctx, ZOOM_FIT_SCALE if ctx.ui_scale != ZOOM_FIT_SCALE else 1.0)
+		}
 
 		// Camera pan — WASD keys
 		if rl.IsKeyDown(.W) do cam_y -= CAMERA_SPEED * dt
@@ -368,20 +377,22 @@ main :: proc() {
 			}
 		}
 
-		// Scroll region: mouse wheel when hovering
+		// Scroll region: mouse wheel scrolls text when hovering, else zooms canvas
 		scroll_content_h := slug.measure_text_wrapped(
 			ctx,
 			SCROLL_TEXT,
 			SMALL_SIZE,
 			scroll_region.width,
 		)
-		if mouse_x >= scroll_region.x &&
-		   mouse_x <= scroll_region.x + scroll_region.width &&
-		   mouse_y >= scroll_region.y &&
-		   mouse_y <= scroll_region.y + scroll_region.height {
-			wheel := rl.GetMouseWheelMove()
-			if wheel != 0 {
+		wheel := rl.GetMouseWheelMove()
+		if wheel != 0 {
+			if mouse_x >= scroll_region.x &&
+			   mouse_x <= scroll_region.x + scroll_region.width &&
+			   mouse_y >= scroll_region.y &&
+			   mouse_y <= scroll_region.y + scroll_region.height {
 				slug.scroll_by(&scroll_region, -wheel * 20.0, scroll_content_h)
+			} else {
+				slug.set_ui_scale(ctx, clamp(ctx.ui_scale + wheel * ZOOM_WHEEL_STEP, ZOOM_MIN, ZOOM_MAX))
 			}
 		}
 
@@ -873,7 +884,7 @@ main :: proc() {
 		// Scale indicator
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("Scale: %.2fx [Up/Down]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
+			fmt.tprintf("Scale: %.2fx [Up/Down/Wheel/Tab]  Cam: %.0f,%.0f [WASD/MMB  R=reset]", ctx.ui_scale, cam_x, cam_y),
 			10,
 			SCALE_Y,
 			16,
