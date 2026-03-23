@@ -828,6 +828,58 @@ text_bg_rect :: proc(
 	return x, y - font.ascent * font_size, w, h
 }
 
+// Draw text in a fixed-width grid. Each character's visual bounding box is
+// centered in a cell of cell_w × cell_h pixels, regardless of its natural
+// advance width — giving uniform tile spacing for any font.
+//
+// Newlines ('\n') advance to the next row; all other runes consume one cell.
+// No kerning is applied (grid layout ignores character pairs).
+//
+// Typical cell sizing using the active font's natural metrics:
+//   cell_w := slug.mono_width(font, font_size)  // widest glyph advance
+//   cell_h := slug.line_height(font, font_size) // ascent + descent + gap
+//
+// Typical uses: roguelike map tiles, stat columns, terminal-style output.
+draw_text_grid :: proc(
+	ctx: ^Context,
+	text: string,
+	x, y: f32,
+	font_size: f32,
+	cell_w, cell_h: f32,
+	color: Color,
+) {
+	col: int = 0
+	row: int = 0
+
+	for ch in text {
+		if ch == '\n' {
+			row += 1
+			col = 0
+			continue
+		}
+
+		g := get_glyph_fallback(ctx, ch)
+		if g == nil {
+			col += 1
+			continue
+		}
+
+		// Center the glyph's visual bbox within the cell.
+		cell_cx := x + f32(col) * cell_w + cell_w * 0.5
+		cell_cy := y + f32(row) * cell_h + cell_h * 0.5
+		glyph_w := (g.bbox_max.x - g.bbox_min.x) * font_size
+		glyph_h := (g.bbox_max.y - g.bbox_min.y) * font_size
+		glyph_x := cell_cx - glyph_w * 0.5
+		glyph_y := cell_cy - glyph_h * 0.5
+
+		if len(g.curves) > 0 && ctx.quad_count < MAX_GLYPH_QUADS {
+			emit_glyph_quad(ctx, g, glyph_x, glyph_y, glyph_w, glyph_h, color)
+		}
+
+		col += 1
+	}
+}
+
 // --- Vertex packing ---
 
 // Emit a single glyph quad into the vertex buffer (axis-aligned).

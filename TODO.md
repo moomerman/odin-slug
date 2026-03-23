@@ -54,11 +54,16 @@ Last updated: 2026-03-23 (session 6)
 ### Up Next
 - [x] **#19 — Camera pan** *(done session 6)*
 - [x] **#20 — Zoom toggle** *(done session 6)* Tab snaps 1.0x↔0.6x; mouse wheel zooms when not over scroll region; Up/Down/wheel all clamped to [0.25, 3.0]x
+- [ ] **#21 — Viewport zoom (zoom toward cursor)**
+      Currently `ui_scale` only scales font sizes — positions are fixed, so zoom doesn't
+      follow the cursor. True viewport zoom needs a `zoom` factor in `Context` applied to
+      both positions AND font sizes in the vertex emitters, plus a camera offset adjustment
+      on each zoom step to keep the point under the cursor fixed in screen space.
 
-
-- [ ] **#13 — Grid rendering mode (CP437)**
+- [x] **#13 — Grid rendering mode (CP437)** *(done session 6)*
       `draw_text_grid(ctx, text, x, y, font_size, cell_w, cell_h, color)`. Fixed-width cells,
-      each character centered. Primary use case: roguelike map tiles and stat columns.
+      each character's bbox centered in its cell. Newlines advance row. Demos show a 2-row
+      roguelike ASCII map.
 
 ### Near-Term Backends
 - [ ] **#16 — Sokol backend** (`slug_sokol`)

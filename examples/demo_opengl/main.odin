@@ -732,21 +732,26 @@ main :: proc() {
 			COLOR_WHITE,
 		)
 
-		// Monospace grid
-		cell_w := slug.mono_width(font, SMALL_SIZE)
-		grid_text := "GRID"
-		for ch, i in grid_text {
-			ch_w := slug.char_advance(font, ch, SMALL_SIZE)
-			char_x := RIGHT_X + f32(i) * cell_w + (cell_w - ch_w) * 0.5
-			slug.draw_text(ctx, grid_text[i:][:1], char_x, GRID_Y, SMALL_SIZE, COLOR_CYAN)
-		}
+		// Fixed-width grid: roguelike map row, each char centered in its cell
+		grid_cell_w := slug.mono_width(font, SMALL_SIZE)
+		grid_cell_h := slug.line_height(font, SMALL_SIZE)
+		slug.draw_text_grid(
+			ctx,
+			"##.@..g..##\n##..:)...##",
+			RIGHT_X,
+			GRID_Y,
+			SMALL_SIZE,
+			grid_cell_w,
+			grid_cell_h,
+			COLOR_CYAN,
+		)
 		slug.draw_text(
 			ctx,
-			fmt.tprintf("cell: %.1fpx", cell_w),
+			fmt.tprintf("cell: %.0fx%.0fpx", grid_cell_w, grid_cell_h),
 			RIGHT_X,
-			GRID_Y + 25,
-			SMALL_SIZE,
-			{0.5, 0.5, 0.5, 1.0},
+			GRID_Y + grid_cell_h * 2 + 4,
+			13,
+			{0.5, 0.5, 0.7, 1.0},
 		)
 
 		// Alignment demo
