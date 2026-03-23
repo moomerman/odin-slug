@@ -100,16 +100,19 @@ The demos use a named position table at the top of each `main.odin`. Every coord
 - Center (x=420): animated effects and SVG icons
 - Right (x=800): structural demos (zoom, truncate, grid, alignment, wrap, scroll)
 
+**Text sizes (all demos):** TITLE_SIZE=52, BODY_SIZE=34, SMALL_SIZE=24, ICON_SIZE=44
+
 **Left column layout notes:**
-- `PANEL_Y` (currently 435) controls where the lower panel box starts
-- When adding a new row to the left column **between `ROW_CURSOR_HINT` and the panel**, bump `PANEL_Y` down enough to avoid overlap (typically +25 to +30 per new SMALL_SIZE row)
+- `PANEL_Y` (currently 516) controls where the lower panel box starts
+- When adding a new row to the left column **between `ROW_CURSOR_HINT` and the panel**, bump `PANEL_Y` down enough to avoid overlap (typically +30 to +35 per new SMALL_SIZE row)
 - All panel content constants (`PANEL_RAINBOW_Y`, `PANEL_WOBBLE_Y`, `PANEL_CACHED_Y`, `SERIF_LINE_Y`) are computed from `PANEL_Y`, so they shift automatically
 - The cached label is created before the main loop using `PANEL_CACHED_Y` — it picks up the new value automatically since it's a compile-time constant
-- `SCALE_Y = 700` is the bottom anchor; verify `SERIF_LINE_Y` stays below 680 after any shift
+- `SCALE_Y = 820` is the bottom anchor (window is 900px); verify `SERIF_LINE_Y` stays below 760 after any shift
+- **ROW_HIGHLIGHT (282)** draws only "SELECTED" at BODY_SIZE. **ROW_STATUS (330)** draws the status bg-tags at SMALL_SIZE — they were split because the full row at BODY_SIZE overflows into the center column. Don't recombine them.
 
 **Right column layout notes:**
-- Elements stack: ZOOM_Y(240) → TRUNCATE_Y(295) → GRID_Y(350) → ALIGN(62..112) → WRAP_Y(410) → SCROLL_Y(510) → CLIP_BOX_Y(643) → SCALE_Y(700)
-- CLIP_BOX_Y(643): GPU scissor demo — 200×40px box, text baseline at CLIP_TEXT_Y(670). Box bottom = 683.
+- Elements stack: ZOOM_Y(250) → TRUNCATE_Y(315) → GRID_Y(380) → ALIGN(65..129) → WRAP_Y(425) → SCROLL_Y(590) → CLIP_BOX_Y(738) → SCALE_Y(820)
+- CLIP_BOX_Y(738): GPU scissor demo — 200×44px box, text baseline at CLIP_TEXT_Y(767). Box bottom = 782.
 - New right-column items go between ZOOM_Y and GRID_Y (most space) or between GRID and WRAP
 
 ## Architecture Gotchas — Hard-Won Lessons

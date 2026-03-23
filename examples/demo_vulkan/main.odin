@@ -52,10 +52,10 @@ ICON_CIRCLE_PATH :: "examples/assets/icons/circle.svg"
 
 // --- Text sizes ---
 
-TITLE_SIZE :: f32(42)
-BODY_SIZE :: f32(28)
-SMALL_SIZE :: f32(20)
-ICON_SIZE :: f32(36)
+TITLE_SIZE :: f32(52)
+BODY_SIZE :: f32(34)
+SMALL_SIZE :: f32(24)
+ICON_SIZE :: f32(44)
 
 // =============================================================
 // Position table — every layout coordinate in one named place.
@@ -67,89 +67,90 @@ ICON_SIZE :: f32(36)
 LEFT_X :: f32(40)
 
 ROW_TITLE :: f32(60) // title, TITLE_SIZE, drop shadow
-ROW_SUBTITLE :: f32(115) // subtitle, BODY_SIZE, outlined
-ROW_RICH_TEXT :: f32(175) // rich text markup
-ROW_UNICODE :: f32(218) // unicode characters
-ROW_HIGHLIGHT :: f32(263) // highlighted text + status row
-ROW_SERIF :: f32(310) // multi-font serif line
-ROW_CURSOR :: f32(355) // cursor demo text (size SMALL_SIZE)
-ROW_CURSOR_HINT :: f32(378) // "[</>] or click  idx:N" (size 14)
+ROW_SUBTITLE :: f32(132) // subtitle, BODY_SIZE, outlined
+ROW_RICH_TEXT :: f32(192) // rich text markup
+ROW_UNICODE :: f32(238) // unicode characters
+ROW_HIGHLIGHT :: f32(282) // "SELECTED" highlighted word, BODY_SIZE
+ROW_STATUS :: f32(330) // status bg-tag row below SELECTED, SMALL_SIZE
+ROW_SERIF :: f32(380) // multi-font serif line
+ROW_CURSOR :: f32(426) // cursor demo text (size SMALL_SIZE)
+ROW_CURSOR_HINT :: f32(454) // "[</>] or click  idx:N" (size 14)
 
 FLOAT_X :: f32(310) // floating damage number: different x, same row as cursor
-FLOAT_Y :: f32(355)
+FLOAT_Y :: f32(426)
 
 // Panel box (rainbow / wobble / cached), lower left
-ROW_DECORATION :: f32(403) // underlined + strikethrough side by side
+ROW_DECORATION :: f32(480) // underlined + strikethrough side by side
 
 // Panel box (rainbow / wobble / cached), lower left
 PANEL_X :: 40
-PANEL_Y :: 435
-PANEL_W :: 310
-PANEL_H :: 190
+PANEL_Y :: 516
+PANEL_W :: 340
+PANEL_H :: 210
 PANEL_PAD :: f32(15) // inner margin from panel left edge to text
 
-PANEL_RAINBOW_Y :: f32(PANEL_Y + 50) // 485
-PANEL_WOBBLE_Y :: f32(PANEL_Y + 95) // 530
-PANEL_CACHED_Y :: f32(PANEL_Y + 140) // 575
+PANEL_RAINBOW_Y :: f32(PANEL_Y + 55) // 523
+PANEL_WOBBLE_Y :: f32(PANEL_Y + 108) // 576
+PANEL_CACHED_Y :: f32(PANEL_Y + 161) // 629
 
-SERIF_LINE_Y :: f32(PANEL_Y + PANEL_H + 25) // 650
+SERIF_LINE_Y :: f32(PANEL_Y + PANEL_H + 25) // 703
 
 // ---- Center column (x=420..760): animated effects ----
 
 ICONS_X :: f32(420) // first icon x
-ICONS_Y :: f32(80) // icon baseline
-ICON_STRIDE :: f32(50) // x step between icons
+ICONS_Y :: f32(88) // icon baseline
+ICON_STRIDE :: f32(56) // x step between icons
 
 FX_X :: f32(420) // animated effect text left edge
-FX_GRADIENT_Y :: f32(145)
-FX_PULSE_Y :: f32(193)
-FX_FADE_Y :: f32(241)
-FX_XFORM_Y :: f32(290) // per-character transform callback demo
-FX_SUBSUP_Y :: f32(338) // subscript / superscript inline demo
+FX_GRADIENT_Y :: f32(160)
+FX_PULSE_Y :: f32(212)
+FX_FADE_Y :: f32(264)
+FX_XFORM_Y :: f32(320) // per-character transform callback demo
+FX_SUBSUP_Y :: f32(378) // subscript / superscript inline demo
 
 // Circle (orbital text + rotated text — no background shape in Vulkan demo)
 CIRCLE_CX :: f32(560)
-CIRCLE_CY :: f32(460)
-CIRCLE_R :: f32(80)
+CIRCLE_CY :: f32(490)
+CIRCLE_R :: f32(90)
 
 // ---- Right column (x=800..1240): structural demos ----
 
 RIGHT_X :: f32(800)
 
-ZOOM_Y :: f32(240) // pulsing-size "Zoom!" text — shifted down so ascenders don't hit fallback/justify
+ZOOM_Y :: f32(250) // pulsing-size "Zoom!" text — shifted down so ascenders don't hit fallback/justify
 
-TRUNCATE_Y :: f32(295) // truncated text demo
+TRUNCATE_Y :: f32(315) // truncated text demo
 TRUNCATE_MAX_W :: f32(240) // clip boundary in pixels
 
-GRID_Y :: f32(350) // monospace grid demo
+GRID_Y :: f32(380) // monospace grid demo
 
 ALIGN_X :: f32(1050) // x anchor for all three alignment variants
-ALIGN_Y0 :: f32(62) // left-aligned
-ALIGN_Y1 :: f32(87) // centered
-ALIGN_Y2 :: f32(112) // right-aligned
+ALIGN_Y0 :: f32(65) // left-aligned
+ALIGN_Y1 :: f32(97) // centered
+ALIGN_Y2 :: f32(129) // right-aligned
 
-FALLBACK_Y :: f32(137) // fallback chain demo (sans + auto-serif for missing codepoints)
+FALLBACK_Y :: f32(163) // fallback chain demo (sans + auto-serif for missing codepoints)
 
-JUSTIFY_Y :: f32(160) // justified alignment demo
+JUSTIFY_Y :: f32(196) // justified alignment demo
 JUSTIFY_W :: f32(380) // column width — text expands to fill this exactly
 
 WRAP_W :: f32(420)
-WRAP_Y :: f32(410)
+WRAP_Y :: f32(425)
 WRAP_PAD :: f32(8)
 
 SCROLL_W :: f32(420)
-SCROLL_Y :: f32(510)
-SCROLL_H :: f32(100)
+SCROLL_Y :: f32(590)
+SCROLL_H :: f32(110)
 
 // GPU scissor clipping demo — right column, below scroll region
-CLIP_LABEL_Y :: f32(625) // "GPU scissor:" label
+CLIP_LABEL_Y :: f32(720) // "GPU scissor:" label
 CLIP_BOX_X :: RIGHT_X // aligns with right column
-CLIP_BOX_Y :: f32(643) // top of the scissored viewport
+CLIP_BOX_Y :: f32(738) // top of the scissored viewport
 CLIP_BOX_W :: f32(200) // intentionally narrow — text overflows without scissor
-CLIP_BOX_H :: f32(40) // one line tall
-CLIP_TEXT_Y :: CLIP_BOX_Y + 27 // text baseline centered inside box
+CLIP_BOX_H :: f32(44) // one line tall
+CLIP_TEXT_Y :: CLIP_BOX_Y + 29 // text baseline centered inside box
 
-SCALE_Y :: f32(700)
+SCALE_Y :: f32(820)
 
 // --- Colors ---
 
@@ -422,10 +423,10 @@ main :: proc() {
 		)
 		slug.draw_rich_text(
 			ctx,
-			"  Status: {bg:red:POISONED}  {bg:green:HASTE}  {bg:#884400:BURNING}",
-			LEFT_X + 130,
-			ROW_HIGHLIGHT,
-			BODY_SIZE,
+			"Status: {bg:red:POISONED}  {bg:green:HASTE}  {bg:#884400:BURNING}",
+			LEFT_X,
+			ROW_STATUS,
+			SMALL_SIZE,
 			COLOR_WHITE,
 		)
 
@@ -443,8 +444,8 @@ main :: proc() {
 
 		// Text_Style demo: underline, strikethrough, and both simultaneously
 		slug.draw_text_styled(ctx, "Underlined", LEFT_X, ROW_DECORATION, STYLE_UNDERLINE)
-		slug.draw_text_styled(ctx, "Struck-out", LEFT_X + 155, ROW_DECORATION, STYLE_STRIKE)
-		slug.draw_text_styled(ctx, "Both", LEFT_X + 268, ROW_DECORATION, STYLE_BOTH)
+		slug.draw_text_styled(ctx, "Struck-out", LEFT_X + 158, ROW_DECORATION, STYLE_STRIKE)
+		slug.draw_text_styled(ctx, "Both", LEFT_X + 316, ROW_DECORATION, STYLE_BOTH)
 
 		// Cursor positioning demo
 		font := slug.active_font(ctx)
@@ -608,7 +609,7 @@ main :: proc() {
 
 			ow, _ := slug.measure_text(font, "O", SMALL_SIZE)
 			slug.draw_text(ctx, "O", px, FX_SUBSUP_Y, SMALL_SIZE, COLOR_WHITE)
-			px += ow + 28
+			px += ow + 35
 
 			xw, _ := slug.measure_text(font, "x", SMALL_SIZE)
 			slug.draw_text(ctx, "x", px, FX_SUBSUP_Y, SMALL_SIZE, COLOR_WHITE)
