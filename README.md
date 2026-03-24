@@ -630,6 +630,7 @@ Built with **Claude Code** (Anthropic's Claude). I provided direction, architect
 - [x] Rich text wrapping and scrolling with word-wrap + markup
 - [x] Columnar layout with per-column widths and alignment
 - [x] Wrapped text line count for auto-sizing panels
+- [x] GPU scissor clipping with multi-pass flush support
 
 ### Later
 
