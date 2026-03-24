@@ -239,7 +239,7 @@ All magic numbers are named constants:
 | Constant | Value | Rationale |
 |----------|-------|-----------|
 | `BAND_TEXTURE_WIDTH` | 4096 | Maximum texture width widely supported. Matches `kLogBandTextureWidth` in shader. |
-| `MAX_CACHED_GLYPHS` | 256 | Covers ASCII + Latin-1 + icon slots. Increase for CJK support. |
+| `INITIAL_GLYPH_CAPACITY` | 256 | Initial glyph map size. Covers ASCII + Latin-1 + icon slots. Grows dynamically for CJK. |
 | `MAX_GLYPH_QUADS` | 4096 | ~4K visible glyphs per frame. ~1.3MB vertex data (4 verts * 80 bytes each). Increase if needed. |
 | `MAX_FONT_SLOTS` | 4 | Most apps use 1-3 fonts. 4 covers bold/italic variants. |
 | `DILATION_SCALE` | 1.0 | Pixels of quad expansion for antialiasing border. |

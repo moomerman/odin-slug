@@ -136,8 +136,9 @@ handles that. It also flushes Karl2D's draw batch before slug issues GL calls.
 The caller passes `k2.draw_current_batch` as a callback during init — this
 avoids a hard import dependency on the Karl2D package.
 
-Requires: `KARL2D_PATH` environment variable pointing to the parent directory
-of the `karl2d/` package.
+Requires: Karl2D source. The build script auto-detects `../karl2d/` as a
+sibling directory. Override with `KARL2D_PATH` environment variable if your
+Karl2D checkout is elsewhere.
 
 ### Sokol — "I want cross-platform without Vulkan complexity"
 
@@ -151,12 +152,15 @@ compiles GLSL 430 shaders inline (no external .spv files) and uses Sokol's
 The caller manages `sg.begin_pass()` / `sg.end_pass()` / `sg.commit()` —
 slug's `flush()` issues pipeline/binding/draw calls inside the active pass.
 
-Requires: sokol-odin clone with pre-compiled C libraries. Set `SOKOL_PATH`
-to the `sokol/` subdirectory inside the clone (not the repo root).
+Requires: sokol-odin clone with pre-compiled C libraries. The build script
+auto-detects `../sokol-odin/sokol/` as a sibling directory. Override with
+`SOKOL_PATH` if your clone is elsewhere (point to the `sokol/` subdirectory
+inside the clone, not the repo root).
 
 ```sh
 git clone https://github.com/floooh/sokol-odin /path/to/sokol-odin
 cd /path/to/sokol-odin/sokol && bash build_clibs_linux.sh
+# If not a sibling directory:
 export SOKOL_PATH=/path/to/sokol-odin/sokol
 ```
 
@@ -212,8 +216,8 @@ Per-font is better when fonts are loaded/unloaded dynamically.
 |---------|--------------|---------------|
 | OpenGL | `./build.sh opengl` | OpenGL 3.3 driver |
 | Raylib | `./build.sh raylib` | Raylib (Odin vendor lib) |
-| Karl2D | `./build.sh karl2d` | `KARL2D_PATH` set |
-| Sokol | `./build.sh sokol` | `SOKOL_PATH` set, C libs compiled |
+| Karl2D | `./build.sh karl2d` | Karl2D source (auto-detects sibling dir, or set `KARL2D_PATH`) |
+| Sokol | `./build.sh sokol` | sokol-odin + C libs compiled (auto-detects sibling dir, or set `SOKOL_PATH`) |
 | SDL3 GPU | `./build.sh sdl3gpu` | `./build.sh shaders` first (needs `glslc`) |
 | Vulkan | `./build.sh vulkan` | `./build.sh shaders` first (needs `glslc`), Vulkan driver |
 

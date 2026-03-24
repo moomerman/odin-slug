@@ -3,7 +3,7 @@
 Tracks both the feature roadmap and polish/cleanup work.
 Update after each session.
 
-Last updated: 2026-03-23 (session 8)
+Last updated: 2026-03-23 (session 9 — v1.0)
 
 ---
 
@@ -25,20 +25,19 @@ Last updated: 2026-03-23 (session 8)
 - [x] Grid rendering mode / CP437 (`draw_text_grid`; fixed-width cells, bbox-centered; `\n` row advance)
 - [x] Message log widget (`Message_Log`, `log_push`, `draw_message_log`; fixed-size ring buffer, age-based fade, no dynamic allocation)
 - [x] **#22** — Camera/viewport bugs fixed: Raylib shapes now offset by cam_x/cam_y; scroll region hover check converts mouse to world space in all 3 demos; band epsilon (1/1024 em-space) added to glyph processing
-
----
-
-## Polish / Cleanup
-*Fix these opportunistically — before or alongside features.*
-
-### Documentation *(all done session 6)*
-- [x] `draw_icon` — precondition comment added
-- [x] `cache_text` — precondition comment added (`begin()` required)
-- [x] `measure_text` — fallback chain caveat added
-- [x] `font_set_fallback` — shared atlas cross-reference added
-
-### API additions
-- [x] `active_font_index(ctx) -> int` — added session 6
+- [x] **#10** — Custom ellipsis string parameter on `draw_text_truncated`
+- [x] **#11** — Text selection highlighting (`draw_text_selection`)
+- [x] **#12** — Independent underline/strikethrough colors (`line_color` param, `Text_Style` fields)
+- [x] **#13** — Word-boundary truncation (`draw_text_truncated_word`)
+- [x] **#16** — Sokol backend (`slug_sokol`)
+- [x] **#17** — SDL3 GPU backend (`slug_sdl3gpu`)
+- [x] **#18** — Karl2D backend (`slug_karl2d`)
+- [x] Letter spacing / tracking (`tracking` parameter)
+- [x] Tab stops (horizontal tab character support)
+- [x] Line spacing multiplier (`line_spacing` parameter on wrapped text)
+- [x] `active_font_index(ctx) -> int`
+- [x] Documentation polish: `draw_icon`, `cache_text`, `measure_text`, `font_set_fallback` precondition comments
+- [x] Full codebase audit (sessions 8 and 9)
 
 ---
 
@@ -53,20 +52,6 @@ Last updated: 2026-03-23 (session 8)
 
 - [ ] **#15 — Tooltip system**
       Positioned text box that follows the mouse and auto-flips at screen edges.
-
-### Near-Term Backends
-- [ ] **#16 — Sokol backend** (`slug_sokol`)
-      Sokol GFX is a popular Odin/C cross-platform graphics layer. Good portability story.
-      Needs `flush(scissor)` support via `sg_apply_scissor_rect`.
-
-- [ ] **#17 — SDL3 GPU backend** (`slug_sdl3`)
-      SDL3's new GPU API. Pairs naturally with the existing Vulkan demo's SDL3 windowing.
-      Needs `flush(scissor)` support via `sdl.GPUSetScissor`.
-
-- [ ] **#18 — Karl2D backend** (`slug_karl2d`)
-      Karl Zylinski's pure-Odin 2D library (zero C deps). Primary target for the roguelike project.
-      Integration notes in `docs/KARL2D_INTEGRATION.md`. Has OpenGL, D3D11, and Metal backends.
-      Needs `flush(scissor)` support via the underlying GL/D3D11/Metal scissor APIs.
 
 ### Slug Algorithm Optimizations (from Eric Lengyel's tips)
 *These improve texture size and cache performance. Correctness is already handled.*

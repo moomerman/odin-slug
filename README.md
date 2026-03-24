@@ -22,7 +22,9 @@ Slug skips rasterization entirely. The GPU evaluates the actual Bezier curves of
 - Measurement -- per-character, per-string, monospace grid, and line height helpers
 - Word wrapping -- automatic line breaking with height measurement for sizing containers
 - Alignment -- left, centered, right-aligned, and justified text
-- Truncation -- clip long strings with an ellipsis
+- Truncation -- character or word-boundary clipping with custom ellipsis
+- Text selection -- background highlight over a rune range
+- Letter spacing (tracking), tab stops, line height multiplier
 - Grid layout -- fixed-width cell placement for roguelike maps and tables
 - Subscript / superscript -- inline sub/super with configurable scale and shift
 
@@ -238,19 +240,21 @@ All text drawing, measurement, and effects live in the core package. They work i
 |------|---------|
 | `begin(ctx)` | Reset counters for new frame |
 | `end(ctx)` | Finalize per-font quad ranges |
-| `draw_text(ctx, text, x, y, size, color)` | Draw a string at baseline position |
+| `draw_text(ctx, text, x, y, size, color, tracking?)` | Draw a string at baseline position (optional letter spacing) |
 | `draw_text_centered(ctx, text, x, y, size, color)` | Centered at x |
 | `draw_text_right(ctx, text, x, y, size, color)` | Right-aligned ending at x |
 | `draw_text_justified(ctx, text, x, y, size, width, color)` | Fill column width with even word spacing |
-| `draw_text_wrapped(ctx, text, x, y, size, max_width, color)` | Word wrap, returns total height |
-| `draw_text_truncated(ctx, text, x, y, size, max_width, color)` | Clip with ellipsis, returns drawn width |
+| `draw_text_wrapped(ctx, text, x, y, size, max_width, color, line_spacing?)` | Word wrap (optional line height multiplier), returns total height |
+| `draw_text_truncated(ctx, text, x, y, size, max_width, color, ellipsis?)` | Clip with ellipsis (custom string optional), returns drawn width |
+| `draw_text_truncated_word(ctx, text, x, y, size, max_width, color, ellipsis?)` | Word-boundary truncation with ellipsis |
+| `draw_text_selection(ctx, text, x, y, size, text_color, sel_start, sel_end, sel_color)` | Highlight a rune range with background color |
 | `draw_text_grid(ctx, text, x, y, size, cell_w, cell_h, color)` | Fixed-width grid (roguelike maps) |
 | `draw_text_sub(ctx, text, x, y, size, color)` | Subscript |
 | `draw_text_super(ctx, text, x, y, size, color)` | Superscript |
-| `draw_text_styled(ctx, text, x, y, style)` | Draw with a Text_Style bundle (underline, strikethrough) |
+| `draw_text_styled(ctx, text, x, y, style)` | Draw with a Text_Style bundle (underline, strikethrough, independent decoration colors) |
 | `draw_text_highlighted(ctx, text, x, y, size, text_color, bg_color)` | Background highlight + text |
-| `draw_text_underlined(ctx, text, x, y, size, color)` | Underline decoration |
-| `draw_text_strikethrough(ctx, text, x, y, size, color)` | Strikethrough decoration |
+| `draw_text_underlined(ctx, text, x, y, size, color, line_color?)` | Underline decoration (independent color optional) |
+| `draw_text_strikethrough(ctx, text, x, y, size, color, line_color?)` | Strikethrough decoration (independent color optional) |
 | `draw_text_transformed(ctx, text, x, y, size, color, callback, userdata)` | Per-glyph custom transform |
 | `draw_icon(ctx, slot, x, y, size, color)` | Draw SVG icon centered at position |
 | `draw_rect(ctx, x, y, w, h, color)` | Solid background rectangle (drawn behind text) |
@@ -359,6 +363,7 @@ Inline markup format: `{color:text}`, `{#rrggbb:text}`, `{bg:color:text}`, `{ico
 |------|---------|
 | `set_ui_scale(ctx, scale)` | Set global UI scale factor |
 | `scaled_size(ctx, size)` | Apply UI scale to a font size |
+| `active_font_index(ctx)` | Get current active font slot index |
 | `set_camera(ctx, x, y)` | Set camera offset for canvas panning |
 | `vertex_count(ctx)` | Vertices written this frame |
 | `destroy(ctx)` | Free all fonts and glyph data |
@@ -486,9 +491,9 @@ Both are sampled with `texelFetch` (integer coordinates, nearest filtering).
 ./build.sh shaders    # Compile GLSL 4.50 -> SPIR-V only (requires glslc)
 ./build.sh all        # Build all standard examples
 
-# External dependency backends:
-KARL2D_PATH=/path/to ./build.sh karl2d     # Parent dir of karl2d/
-SOKOL_PATH=/path/to/sokol-odin/sokol ./build.sh sokol
+# External dependency backends (auto-detect sibling dirs, or set paths):
+./build.sh karl2d     # Auto-detects ../karl2d/, or: KARL2D_PATH=/path/to ./build.sh karl2d
+./build.sh sokol      # Auto-detects ../sokol-odin/sokol/, or: SOKOL_PATH=/path/to/sokol ./build.sh sokol
 
 ./build.sh clean      # Remove build artifacts
 ```
@@ -591,35 +596,33 @@ Built with **Claude Code** (Anthropic's Claude). I provided direction, architect
 
 ## Roadmap
 
-### Completed
+### v1.0 (current)
 
 - [x] Resolution-independent GPU Bezier text rendering
 - [x] SVG vector icon support
-- [x] Text wrapping, truncation, alignment (left/center/right/justified)
+- [x] Text wrapping, word/character truncation with custom ellipsis, alignment (left/center/right/justified)
 - [x] Rich text markup with inline colors, backgrounds, and icons
-- [x] 14 text effects (rainbow, wobble, shake, shadow, outline, pulse, etc.)
+- [x] 13 text effects (rainbow, wobble, shake, shadow, outline, pulse, fade, gradient, wave, circular, rotation, typewriter, float)
+- [x] Text selection highlighting
 - [x] Static text caching
 - [x] Scrollable text regions with viewport clipping
 - [x] Message log system with auto-fading
 - [x] Text input cursor positioning and click hit testing
-- [x] UI scaling and camera panning
+- [x] UI scaling, camera panning, mouse wheel zoom
 - [x] Multi-font with shared atlases and fallback chains
-- [x] Kerning, subscript/superscript, grid layout
+- [x] Kerning, letter spacing (tracking), tab stops, line spacing multiplier
+- [x] Subscript/superscript, grid layout (CP437), independent decoration colors
 - [x] 6 backends: OpenGL, Raylib, Vulkan, SDL3 GPU, Karl2D, Sokol GFX
 
-### Near-term
+### Post-v1.0 (iterative)
 
-- [ ] C library wrapper for cross-language use (Jai, Zig, Go)
+- [ ] Zoom toward cursor -- camera offset adjustment per zoom step
+- [ ] Tooltip system -- positioned text box, auto-flips at screen edges
+- [ ] Text input widget -- builds on cursor positioning, selection, clipboard
+- [ ] Instanced rendering -- batch draw calls optimization
+- [ ] HarfBuzz integration -- complex script shaping (Arabic, Devanagari, CJK)
+- [ ] BiDi text (UAX #9) -- bidirectional algorithm for mixed LTR/RTL
 - [ ] README screenshots / demo GIFs
-- [ ] WebGPU backend (for browser-based Odin projects via wasm)
-- [ ] sokol-shdc integration for cross-platform Sokol (Metal, D3D11, WebGPU)
-
-### Long-term
-
-- [ ] Text shaping -- HarfBuzz integration for complex scripts (Arabic, Devanagari, CJK vertical)
-- [ ] GPU compute preprocessing -- band generation and curve sorting in compute shaders
-- [ ] Instanced rendering -- one draw call per glyph type instead of per-instance quads
-- [ ] Subpixel rendering -- per-RGB-subpixel coverage for LCD antialiasing
 
 ## Credits
 
