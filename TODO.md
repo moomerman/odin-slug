@@ -45,16 +45,11 @@ Last updated: 2026-03-24 (session 10 — v1.0)
 - [x] **#31** — Progress / stat bars (`draw_bar` with fill, border, centered label)
 - [x] **#32** — Wrapped text line count (`measure_text_wrapped` returns `(height, lines)`)
 - [x] **#33** — Columnar / tabular layout (`draw_text_columns`, `Column`, `Column_Align`)
+- [x] **#34** — Clipped rich text (GPU scissor at flush level, demoed in all 6 backends)
 
 ---
 
 ## Feature Roadmap
-
-### Up Next
-
-- [ ] **#34 — Clipped rich text convenience**
-      GPU scissor exists at flush level but no integration with text draw procs. Users must
-      manually coordinate flush calls. Horizontal overflow in panels isn't handled.
 
 ### Later
 - [ ] **#21 — Viewport zoom (zoom toward cursor)**

@@ -631,10 +631,6 @@ Built with **Claude Code** (Anthropic's Claude). I provided direction, architect
 - [x] Columnar layout with per-column widths and alignment
 - [x] Wrapped text line count for auto-sizing panels
 
-### Post-v1.0
-
-- [ ] Clipped rich text -- scissor integration with text draw procs
-
 ### Later
 
 - [ ] Zoom toward cursor -- camera offset adjustment per zoom step
