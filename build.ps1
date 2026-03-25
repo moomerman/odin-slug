@@ -36,6 +36,10 @@ function Do-Check {
     odin check slug/backends/sdl3gpu/ -no-entry-point
     Write-Host "SDL3 GPU backend: OK"
 
+    Write-Host "=== Checking D3D11 backend ==="
+    odin check slug/backends/d3d11/ -no-entry-point
+    Write-Host "D3D11 backend: OK"
+
     Write-Host "=== Checking Karl2D backend ==="
     odin check slug/backends/karl2d/ -no-entry-point
     Write-Host "Karl2D backend: OK"
@@ -108,6 +112,12 @@ function Resolve-SokolPath {
     return $null
 }
 
+function Do-BuildD3D11 {
+    Write-Host "=== Building D3D11 demo ==="
+    odin build examples/demo_d3d11/ -out:demo_d3d11.exe -collection:libs=.
+    Write-Host "Built: demo_d3d11.exe"
+}
+
 function Do-BuildKarl2D {
     Write-Host "=== Building Karl2D demo ==="
     $karl2dPath = Resolve-Karl2DPath
@@ -139,7 +149,7 @@ function Do-Clean {
     Write-Host "=== Cleaning build artifacts ==="
     Remove-Item -Force -ErrorAction SilentlyContinue `
         demo_opengl.exe, demo_raylib.exe, demo_vulkan.exe, `
-        demo_sdl3gpu.exe, demo_karl2d.exe, demo_sokol.exe
+        demo_sdl3gpu.exe, demo_d3d11.exe, demo_karl2d.exe, demo_sokol.exe
     Get-ChildItem slug/shaders/*.spv -ErrorAction SilentlyContinue | Remove-Item -Force
     Write-Host "Clean."
 }
@@ -150,6 +160,7 @@ switch ($Command) {
     "raylib"  { Do-BuildRaylib }
     "vulkan"  { Do-BuildVulkan }
     "sdl3gpu" { Do-BuildSDL3GPU }
+    "d3d11"   { Do-BuildD3D11 }
     "karl2d"  { Do-BuildKarl2D }
     "sokol"   { Do-BuildSokol }
     "shaders" { Do-CompileShaders }
@@ -164,6 +175,7 @@ switch ($Command) {
         Write-Host "  raylib      Build the Raylib integration demo"
         Write-Host "  vulkan      Compile shaders + build the Vulkan demo"
         Write-Host "  sdl3gpu     Compile shaders + build the SDL3 GPU demo"
+        Write-Host "  d3d11       Build the D3D11 demo (Windows only)"
         Write-Host "  karl2d      Build the Karl2D demo (KARL2D_PATH or auto-detect ..\karl2d\)"
         Write-Host "  sokol       Build the Sokol GFX demo (SOKOL_PATH or auto-detect ..\sokol-odin\sokol\)"
         Write-Host "  shaders     Compile GLSL 4.50 + SDL3 shaders to SPIR-V (requires glslc)"

@@ -60,12 +60,14 @@ Slug skips rasterization entirely. The GPU evaluates the actual Bezier curves of
 - Raylib (thin wrapper over OpenGL, automatic batch flush)
 - Vulkan 1.x (standalone, SDL3 windowing)
 - SDL3 GPU (cross-platform: Vulkan/D3D12/Metal via SDL3)
+- Direct3D 11 (standalone, Win32 windowing, runtime HLSL compilation)
 - Karl2D (thin wrapper over OpenGL, callback-based batch flush)
 - Sokol GFX (standalone, GL backend with GLSL 430)
 
 **Dependencies**
 - Core library: only `vendor:stb/truetype` (ships with Odin)
-- Backends use Odin vendor packages (OpenGL, Vulkan, SDL3, Raylib, GLFW)
+- Backends use Odin vendor packages (OpenGL, Vulkan, SDL3, D3D11, Raylib, GLFW)
+- D3D11 backend uses `vendor:directx/d3d11` and `vendor:directx/d3d_compiler` (Windows only, no external deps)
 - Karl2D and Sokol require external packages via `-collection:` flags
 
 ## Quick Start
@@ -87,6 +89,7 @@ your_project/
             ├── raylib/
             ├── vulkan/
             ├── sdl3gpu/
+            ├── d3d11/       (Windows only)
             ├── karl2d/
             └── sokol/
 ```
@@ -174,6 +177,23 @@ sg.end_pass()
 sg.commit()
 ```
 
+**Direct3D 11** -- standalone, caller provides device/context/RTV (Windows only):
+```odin
+import slug_d3d "libs:slug/backends/d3d11"
+import d3d11 "vendor:directx/d3d11"
+
+renderer := new(slug_d3d.Renderer)
+slug_d3d.init(renderer, device, device_context)  // caller-owned device
+ctx := slug_d3d.ctx(renderer)
+slug_d3d.load_font(renderer, 0, "myfont.ttf")
+
+// In render loop:
+slug.begin(ctx)
+slug.draw_text(ctx, "Hello!", 100, 100, 32, {1, 1, 1, 1})
+slug.end(ctx)
+slug_d3d.flush(renderer, width, height, rtv)  // caller-owned render target
+```
+
 **Vulkan** and **SDL3 GPU** -- own their frame lifecycle:
 ```odin
 // Vulkan:
@@ -215,6 +235,7 @@ slug/                              Core library (package slug)
     ├── opengl/opengl.odin         OpenGL 3.3 (GLFW)
     ├── raylib/raylib.odin         Raylib (thin wrapper over OpenGL)
     ├── karl2d/karl2d.odin         Karl2D (thin wrapper over OpenGL)
+    ├── d3d11/d3d11.odin           Direct3D 11 (Windows, embedded HLSL)
     ├── sokol/sokol.odin           Sokol GFX (GL backend, GLSL 430)
     ├── sdl3gpu/sdl3gpu.odin       SDL3 GPU (Vulkan/D3D12/Metal)
     └── vulkan/                    Vulkan 1.x (SDL3 windowing)
@@ -490,6 +511,7 @@ Both are sampled with `texelFetch` (integer coordinates, nearest filtering).
 - OpenGL 3.3+ capable GPU (for GL-based backends)
 - For Vulkan backend: Vulkan SDK + `glslc` shader compiler
 - For SDL3 GPU backend: SDL3 + `glslc`
+- For D3D11 backend: Windows with D3D11-capable GPU (no external deps, uses Odin vendor DirectX bindings)
 - For Karl2D backend: [Karl2D](https://github.com/nicoepp/karl2d) source
 - For Sokol backend: [sokol-odin](https://github.com/floooh/sokol-odin) clone (build C libs first)
 
@@ -501,8 +523,9 @@ Both are sampled with `texelFetch` (integer coordinates, nearest filtering).
 ./build.sh raylib     # Build Raylib demo
 ./build.sh vulkan     # Compile shaders + build Vulkan/SDL3 demo
 ./build.sh sdl3gpu    # Compile shaders + build SDL3 GPU demo
+./build.sh d3d11      # Build D3D11 demo (Windows only)
 ./build.sh shaders    # Compile GLSL 4.50 -> SPIR-V only (requires glslc)
-./build.sh all        # Build all standard examples
+./build.sh all        # Build opengl + raylib + vulkan + sdl3gpu
 
 # External dependency backends (auto-detect sibling dirs, or set paths):
 ./build.sh karl2d     # Auto-detects ../karl2d/, or: KARL2D_PATH=/path/to ./build.sh karl2d
@@ -520,6 +543,7 @@ odin check slug/backends/opengl/ -no-entry-point
 odin check slug/backends/raylib/ -no-entry-point
 odin check slug/backends/vulkan/ -no-entry-point
 odin check slug/backends/sdl3gpu/ -no-entry-point
+odin check slug/backends/d3d11/ -no-entry-point    # Windows only
 odin check slug/backends/karl2d/ -no-entry-point
 odin check slug/backends/sokol/ -no-entry-point -collection:sokol=$SOKOL_PATH
 
@@ -533,6 +557,9 @@ odin build examples/demo_vulkan/ -out:demo_vulkan -collection:libs=.
 
 # SDL3 GPU (also requires compiled shaders)
 odin build examples/demo_sdl3gpu/ -out:demo_sdl3gpu -collection:libs=.
+
+# D3D11 (Windows only, no external deps)
+odin build examples/demo_d3d11/ -out:demo_d3d11 -collection:libs=.
 
 # Karl2D (external dependency)
 odin build examples/demo_karl2d/ -out:demo_karl2d -collection:libs=. -collection:karl2d=$KARL2D_PATH

@@ -17,9 +17,10 @@ usage() {
     echo "  vulkan      Compile shaders + build the Vulkan demo"
     echo "  sdl3gpu     Compile shaders + build the SDL3 GPU demo"
     echo "  karl2d      Build the Karl2D integration demo (requires KARL2D_PATH)"
+    echo "  d3d11       Build the D3D11 demo (Windows only)"
     echo "  sokol       Build the Sokol GFX demo (requires SOKOL_PATH)"
     echo "  shaders     Compile GLSL 4.50 shaders to SPIR-V (requires glslc)"
-    echo "  all         Build all examples (except karl2d, sokol)"
+    echo "  all         Build all examples (except karl2d, sokol, d3d11)"
     echo "  clean       Remove build artifacts"
     echo ""
     echo "If no command is given, 'check' is run."
@@ -49,6 +50,15 @@ do_check() {
     echo "=== Checking Karl2D backend ==="
     odin check slug/backends/karl2d/ -no-entry-point
     echo "Karl2D backend: OK"
+
+    # D3D11 backend is Windows-only — skip on other platforms
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        echo "=== Checking D3D11 backend ==="
+        odin check slug/backends/d3d11/ -no-entry-point
+        echo "D3D11 backend: OK"
+    else
+        echo "=== Skipping D3D11 backend (Windows only) ==="
+    fi
 
     if [ -z "$SOKOL_PATH" ] && [ -d "$SCRIPT_DIR/../sokol-odin/sokol" ]; then
         SOKOL_PATH="$(cd "$SCRIPT_DIR/../sokol-odin/sokol" && pwd)"
@@ -105,6 +115,12 @@ do_build_sdl3gpu() {
     echo "Built: ./demo_sdl3gpu"
 }
 
+do_build_d3d11() {
+    echo "=== Building D3D11 demo ==="
+    odin build examples/demo_d3d11/ -out:demo_d3d11 -collection:libs=.
+    echo "Built: ./demo_d3d11"
+}
+
 do_build_karl2d() {
     echo "=== Building Karl2D demo ==="
     if [ -z "$KARL2D_PATH" ]; then
@@ -113,7 +129,7 @@ do_build_karl2d() {
             KARL2D_PATH="$(cd "$SCRIPT_DIR/.." && pwd)"
         else
             echo "Error: KARL2D_PATH not set and ../karl2d not found."
-            echo "  Clone it:  git clone https://github.com/karl-zylinski/karl2d.git ../karl2d"
+            echo "  Clone it:  git clone https://github.com/nicoepp/karl2d.git ../karl2d"
             echo "  Or set:    export KARL2D_PATH=/path/to  (parent dir of karl2d/)"
             exit 1
         fi
@@ -141,7 +157,7 @@ do_build_sokol() {
 
 do_clean() {
     echo "=== Cleaning build artifacts ==="
-    rm -f demo_opengl demo_raylib demo_vulkan demo_sdl3gpu demo_karl2d demo_sokol
+    rm -f demo_opengl demo_raylib demo_vulkan demo_sdl3gpu demo_d3d11 demo_karl2d demo_sokol
     rm -f slug/shaders/*.spv
     echo "Clean."
 }
@@ -154,6 +170,7 @@ case "$CMD" in
     raylib)  do_build_raylib ;;
     vulkan)  do_build_vulkan ;;
     sdl3gpu) do_build_sdl3gpu ;;
+    d3d11)   do_build_d3d11 ;;
     karl2d)  do_build_karl2d ;;
     sokol)   do_build_sokol ;;
     shaders) do_compile_shaders ;;

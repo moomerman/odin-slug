@@ -1,6 +1,6 @@
 # Backend Comparison Guide
 
-odin-slug ships six GPU backends. They all render identical output — the same
+odin-slug ships seven GPU backends. They all render identical output — the same
 Slug fragment shader evaluating the same Bezier curves — but differ in API
 complexity, platform reach, and frame lifecycle. This guide helps you pick one.
 
@@ -11,6 +11,7 @@ complexity, platform reach, and frame lifecycle. This guide helps you pick one.
 | **OpenGL** | OpenGL 3.3 | 3.30 | None (vendor lib) | Low | Stateless |
 | **Raylib** | OpenGL 3.3 (via Raylib) | 3.30 | None (vendor lib) | Lowest | Stateless |
 | **Karl2D** | OpenGL 3.3 (via Karl2D) | 3.30 | Karl2D package | Lowest | Stateless |
+| **D3D11** | Direct3D 11 (Windows) | HLSL 5.0 | None (vendor lib) | Low | Stateless |
 | **Sokol** | GL 4.3 / Metal / D3D11 / WebGPU | 430 | sokol-odin | Low | Stateless |
 | **SDL3 GPU** | Vulkan / D3D12 / Metal | SPIR-V | None (vendor lib) | Medium | 3-step |
 | **Vulkan** | Vulkan 1.x | SPIR-V | None (vendor lib) | High | 3-step |
@@ -20,7 +21,7 @@ exposing to the caller. "Lowest" means you barely touch GPU state at all.
 
 ## Frame Models
 
-### Stateless (OpenGL, Raylib, Karl2D, Sokol)
+### Stateless (OpenGL, Raylib, Karl2D, D3D11, Sokol)
 
 The caller manages `slug.begin()` / `slug.end()` directly, then calls `flush()`
 which uploads vertices and issues draw calls in one shot. No GPU synchronization
@@ -140,6 +141,28 @@ Requires: Karl2D source. The build script auto-detects `../karl2d/` as a
 sibling directory. Override with `KARL2D_PATH` environment variable if your
 Karl2D checkout is elsewhere.
 
+### D3D11 — "I want native Windows rendering without OpenGL"
+
+Best for: Windows-native applications that want Direct3D 11 rendering without
+the overhead of Vulkan or the cross-platform abstraction of SDL3 GPU.
+
+The D3D11 backend embeds HLSL Shader Model 5.0 source as string constants and
+compiles them at init time via `d3d_compiler.Compile()`. No external shader
+files or toolchain needed.
+
+The caller owns the `IDevice`, `IDeviceContext`, and swapchain. The backend
+receives device/context at `init()` and the render target view at each `flush()`
+call. This makes it easy to integrate into existing D3D11 applications.
+
+No external dependencies — uses Odin's `vendor:directx/d3d11` and
+`vendor:directx/d3d_compiler` bindings.
+
+```sh
+# Windows only
+./build.sh d3d11
+# or: odin build examples/demo_d3d11/ -out:demo_d3d11 -collection:libs=.
+```
+
 ### Sokol — "I want cross-platform without Vulkan complexity"
 
 Best for: cross-platform apps targeting GL + Metal + D3D11 + WebGPU through
@@ -229,6 +252,7 @@ Per-font is better when fonts are loaded/unloaded dynamically.
 |---------|--------------|---------------|
 | OpenGL | `./build.sh opengl` | OpenGL 3.3 driver |
 | Raylib | `./build.sh raylib` | Raylib (Odin vendor lib) |
+| D3D11 | `./build.sh d3d11` | Windows with D3D11 GPU (no external deps) |
 | Karl2D | `./build.sh karl2d` | Karl2D source (auto-detects sibling dir, or set `KARL2D_PATH`) |
 | Sokol | `./build.sh sokol` | sokol-odin + C libs compiled (auto-detects sibling dir, or set `SOKOL_PATH`) |
 | SDL3 GPU | `./build.sh sdl3gpu` | `./build.sh shaders` first (needs `glslc`) |
@@ -240,6 +264,7 @@ Per-font is better when fonts are loaded/unloaded dynamically.
 |---------|-------|---------|-------|-----|
 | OpenGL | Yes | Yes | Yes (3.3 deprecated) | No |
 | Raylib | Yes | Yes | Yes | No |
+| D3D11 | No | Yes | No | No |
 | Karl2D | Yes | Yes | Untested | No |
 | Sokol | Yes (GL) | Yes (GL/D3D11) | Yes (Metal) | Possible (WebGPU) |
 | SDL3 GPU | Yes (Vulkan) | Yes (Vulkan/D3D12) | Yes (Metal) | No |

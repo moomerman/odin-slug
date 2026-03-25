@@ -13,6 +13,7 @@ Extracted from the SlugVibes demo into a reusable, graphics-API-agnostic package
 - `slug/backends/opengl/` — OpenGL 3.3 backend (package slug_opengl)
 - `slug/backends/sdl3gpu/` — SDL3 GPU backend (package slug_sdl3gpu)
 - `slug/backends/karl2d/` — Karl2D backend (package slug_karl2d, wraps OpenGL)
+- `slug/backends/d3d11/` — Direct3D 11 backend (package slug_d3d11, Windows only)
 - `slug/backends/sokol/` — Sokol GFX backend (package slug_sokol, GL-only GLSL 430)
 - `slug/shaders/` — GLSL shader source (3.30 + 4.50 + SDL3 UBO variants)
 - `examples/` — demo programs
@@ -27,6 +28,7 @@ odin check slug/backends/opengl/ -no-entry-point
 odin check slug/backends/raylib/ -no-entry-point
 odin check slug/backends/vulkan/ -no-entry-point
 odin check slug/backends/sdl3gpu/ -no-entry-point
+odin check slug/backends/d3d11/ -no-entry-point    # Windows only
 odin check slug/backends/karl2d/ -no-entry-point
 
 # Build examples
@@ -42,6 +44,10 @@ odin build examples/demo_vulkan/ -collection:libs=.
 ./build.sh shaders
 odin build examples/demo_sdl3gpu/ -collection:libs=.
 # or: ./build.sh sdl3gpu
+
+# D3D11: Windows only, no external deps needed
+odin build examples/demo_d3d11/ -collection:libs=.
+# or: ./build.sh d3d11
 
 # Karl2D: requires KARL2D_PATH pointing to parent of karl2d/
 export KARL2D_PATH=/path/to  # where /path/to/karl2d/ exists
@@ -68,6 +74,7 @@ Always run all checks + build all demos before committing. Sokol check requires 
 | OpenGL backend (rect pipeline, flush) | `slug/backends/opengl/opengl.odin` |
 | Vulkan backend (pipelines, flush, present_frame) | `slug/backends/vulkan/renderer.odin` |
 | SDL3 GPU backend (pipelines, flush, present_frame) | `slug/backends/sdl3gpu/sdl3gpu.odin` |
+| D3D11 backend (standalone, HLSL shaders embedded) | `slug/backends/d3d11/d3d11.odin` |
 | Karl2D backend (thin wrapper over GL) | `slug/backends/karl2d/karl2d.odin` |
 | Sokol GFX backend (standalone GL) | `slug/backends/sokol/sokol.odin` |
 | Raylib backend (thin wrapper over GL) | `slug/backends/raylib/raylib.odin` |
@@ -113,7 +120,7 @@ public API must meet these standards:
 - Check `odin check` on core + all backends + build examples before committing
 - New procs in core must work across all backends without changes
 - New types that affect the vertex format or texture packing need shader updates too
-- **All 6 demos (demo_raylib, demo_opengl, demo_vulkan, demo_sdl3gpu, demo_karl2d, demo_sokol) must showcase every user-facing feature** — no exceptions
+- **All 7 demos (demo_raylib, demo_opengl, demo_vulkan, demo_sdl3gpu, demo_d3d11, demo_karl2d, demo_sokol) must showcase every user-facing feature** — no exceptions
 - Update docs/DESIGN.md if the feature changes architecture
 
 ### Demo Layout — Adding New Elements
@@ -184,6 +191,20 @@ linalg.matrix_ortho3d_f32(0, w, h, 0, -1, 1)  // correct: same as OpenGL
 linalg.matrix_ortho3d_f32(0, w, 0, h, -1, 1)  // WRONG: would flip vertically
 ```
 Do NOT copy the Vulkan projection when writing SDL3 GPU code — it will render upside down.
+
+### D3D11 NDC Y-axis and scissor
+D3D11 clip space Y+ is up (same as OpenGL). Uses the same projection:
+```odin
+linalg.matrix_ortho3d_f32(0, w, h, 0, -1, 1)  // same as OpenGL
+```
+D3D11 depth range is [0,1] not [-1,1], but irrelevant since depth testing is off.
+D3D11 `RSSetScissorRects` uses top-left origin Y-down — matches screen coords directly. No Y-flip needed (unlike OpenGL's `glScissor` which is Y-up from bottom-left).
+
+### D3D11 HLSL shaders — embedded, runtime compiled
+The D3D11 backend embeds HLSL shader source as string constants (no separate files). Shaders are compiled at init time via `d3d_compiler.Compile()` targeting `vs_5_0`/`ps_5_0`. HLSL cbuffers use `column_major float4x4` so GLSL matrix extraction logic works unchanged. Key GLSL→HLSL mappings: `floatBitsToUint`→`asuint`, `texelFetch`→`.Load(int3(x,y,0))`, `flat`→`nointerpolation`.
+
+### D3D11 backend — caller-owned device
+The D3D11 backend receives `^d3d11.IDevice` + `^d3d11.IDeviceContext` from the caller. It does NOT create device, swapchain, or render target. `flush()` also takes the caller's `^d3d11.IRenderTargetView`. This mirrors the SDL3 GPU backend pattern. The `destroy` proc releases all backend-created COM objects but NOT the caller's device/context.
 
 ### SDL3 GPU push constants → UBOs
 SDL3 GPU's `PushGPUVertexUniformData` maps to uniform buffer objects, NOT Vulkan push constants. Shaders that use `layout(push_constant)` will silently receive all-zero uniforms. The SDL3 GPU backend has its own shader variants (`*_sdl3.*`) using `layout(set = 1, binding = 0) uniform UBO` for vertex uniforms and `layout(set = 2, binding = N)` for fragment samplers.
