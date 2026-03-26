@@ -1,7 +1,6 @@
 package slug
 
 import "core:math"
-import "core:os"
 import "core:strconv"
 import "core:strings"
 
@@ -42,17 +41,6 @@ svg_icon_destroy :: proc(icon: ^SVG_Icon) {
 	icon^ = {}
 }
 
-// Load an SVG file from disk, parse it, and process for GPU rendering.
-svg_load_icon :: proc(path: string) -> (icon: SVG_Icon, ok: bool) {
-	data, read_err := os.read_entire_file(path, context.allocator)
-	if read_err != nil {
-		return {}, false
-	}
-	defer delete(data)
-
-	return svg_parse(string(data))
-}
-
 // Parse SVG string into an icon with processed glyph data.
 svg_parse :: proc(svg_data: string) -> (icon: SVG_Icon, ok: bool) {
 	vb_x, vb_y, vb_w, vb_h: f32
@@ -84,12 +72,9 @@ svg_parse :: proc(svg_data: string) -> (icon: SVG_Icon, ok: bool) {
 	return icon, true
 }
 
-// Load an SVG file and place it into a font's glyph slot.
+// Place a parsed SVG icon into a font's glyph slot.
 // Must be called BEFORE font_process / pack_glyph_textures.
-svg_load_into_font :: proc(font: ^Font, slot_index: int, path: string) -> bool {
-	icon, icon_ok := svg_load_icon(path)
-	if !icon_ok do return false
-
+svg_icon_into_font :: proc(font: ^Font, slot_index: int, icon: SVG_Icon) {
 	// Initialize map on first use
 	if font.glyphs == nil {
 		font.glyphs = make(map[rune]Glyph_Data, INITIAL_GLYPH_CAPACITY)
@@ -100,10 +85,6 @@ svg_load_into_font :: proc(font: ^Font, slot_index: int, path: string) -> bool {
 	g := &font.glyphs[key]
 	g.codepoint = key
 	g.valid = true
-
-	icon.glyph = {}
-
-	return true
 }
 
 // --- XML attribute extraction ---

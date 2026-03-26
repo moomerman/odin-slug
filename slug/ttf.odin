@@ -1,7 +1,6 @@
 package slug
 
 import "core:c"
-import "core:os"
 import stbtt "vendor:stb/truetype"
 
 // ===================================================
@@ -12,17 +11,16 @@ import stbtt "vendor:stb/truetype"
 // so the full ascent-to-descent range is ~1.0).
 // ===================================================
 
-// Load a TTF font file from disk.
-font_load :: proc(path: string) -> (font: Font, ok: bool) {
-	data, read_err := os.read_entire_file(path, context.allocator)
-	if read_err != nil {
-		return {}, false
-	}
-	font.font_data = data
+// Load a TTF font from in-memory data (WASM-compatible).
+// Makes an owned copy of the data so the caller can free the original.
+font_load_mem :: proc(data: []u8) -> (font: Font, ok: bool) {
+	owned := make([]u8, len(data))
+	copy(owned, data)
+	font.font_data = owned
 
 	info := &font.info
-	if stbtt.InitFont(info, raw_data(data), 0) == false {
-		delete(data)
+	if stbtt.InitFont(info, raw_data(owned), 0) == false {
+		delete(owned)
 		return {}, false
 	}
 
@@ -36,7 +34,7 @@ font_load :: proc(path: string) -> (font: Font, ok: bool) {
 	font.line_gap = f32(line_gap_raw) * font.em_scale
 
 	// Read sCapHeight from the OS/2 table for pixel-grid alignment.
-	font.cap_height = read_cap_height(data, font.em_scale)
+	font.cap_height = read_cap_height(owned, font.em_scale)
 
 	return font, true
 }
@@ -166,36 +164,6 @@ font_load_range :: proc(font: ^Font, first, last: rune) -> int {
 		}
 	}
 	return loaded
-}
-
-// Convenience: load a font, its ASCII glyphs, optional SVG icons, and process.
-// Returns the font and packed texture data ready for backend upload.
-// icons is a slice of {slot_index, svg_path} pairs (use slots 128+).
-Icon_Def :: struct {
-	slot: int,
-	path: string,
-}
-
-font_load_with_icons :: proc(
-	ttf_path: string,
-	icons: []Icon_Def = {},
-) -> (
-	font: Font,
-	pack: Texture_Pack_Result,
-	ok: bool,
-) {
-	font_ok: bool
-	font, font_ok = font_load(ttf_path)
-	if !font_ok do return {}, {}, false
-
-	font_load_ascii(&font)
-
-	for icon in icons {
-		svg_load_into_font(&font, icon.slot, icon.path)
-	}
-
-	pack = font_process(&font)
-	return font, pack, true
 }
 
 // ===================================================
@@ -328,8 +296,12 @@ read_u16_be :: proc(data: []u8, offset: int) -> u16 {
 
 @(private = "file")
 read_u32_be :: proc(data: []u8, offset: int) -> u32 {
-	return u32(data[offset]) << 24 | u32(data[offset + 1]) << 16 |
-	       u32(data[offset + 2]) << 8 | u32(data[offset + 3])
+	return(
+		u32(data[offset]) << 24 |
+		u32(data[offset + 1]) << 16 |
+		u32(data[offset + 2]) << 8 |
+		u32(data[offset + 3]) \
+	)
 }
 
 @(private = "file")
