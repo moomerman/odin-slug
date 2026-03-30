@@ -5,6 +5,7 @@
 *.dylib
 *.exe
 *.pdb
+claude.md
 /demo_opengl
 /demo_raylib
 /demo_vulkan
