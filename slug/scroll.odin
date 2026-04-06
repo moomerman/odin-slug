@@ -46,10 +46,6 @@ draw_text_scrolled :: proc(
 	pen_x: f32 = 0
 	pen_y: f32 = 0
 
-	// Visible range in content space
-	vis_top := region.scroll_offset
-	vis_bot := region.scroll_offset + region.height
-
 	i := 0
 	for i < len(text) {
 		if text[i] == '\n' {
@@ -120,9 +116,6 @@ draw_rich_text_scrolled :: proc(
 
 	pen_x: f32 = 0
 	pen_y: f32 = 0
-
-	vis_top := region.scroll_offset
-	vis_bot := region.scroll_offset + region.height
 
 	i := 0
 	for i < len(text) {

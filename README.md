@@ -106,17 +106,17 @@ odin build src/ -collection:libs=./libs
 import "libs:slug"
 import slug_gl "libs:slug/backends/opengl"
 
-// Initialize (heap-allocate -- slug.Context is ~1.5MB)
-renderer := new(slug_gl.Renderer)
-slug_gl.init(renderer)
+// Initialize
+renderer := slug_gl.init()
 slug_gl.load_font(renderer, 0, "myfont.ttf")
-defer { slug_gl.destroy(renderer); free(renderer) }
+defer slug_gl.destroy(renderer)
+ctx := slug_gl.ctx(renderer)
 
 // Per frame
-slug.begin(&renderer.ctx)
-slug.draw_text(&renderer.ctx, "Hello, Slug!", 100, 100, 32, {1, 1, 1, 1})
-slug.draw_text_rainbow(&renderer.ctx, "Rainbow!", 100, 200, 24, time = elapsed)
-slug.end(&renderer.ctx)
+slug.begin(ctx)
+slug.draw_text(ctx, "Hello, Slug!", 100, 100, 32, {1, 1, 1, 1})
+slug.draw_text_rainbow(ctx, "Rainbow!", 100, 200, 24, time = elapsed)
+slug.end(ctx)
 slug_gl.flush(renderer, screen_width, screen_height)
 ```
 
@@ -128,8 +128,7 @@ Each backend follows the same pattern: init, load fonts, per-frame draw, flush, 
 ```odin
 import slug_rl "libs:slug/backends/raylib"
 
-renderer := new(slug_rl.Renderer)
-slug_rl.init(renderer)  // call after rl.InitWindow()
+renderer := slug_rl.init()  // call after rl.InitWindow()
 ctx := slug_rl.ctx(renderer)
 slug_rl.load_font(renderer, 0, "myfont.ttf")
 
@@ -147,8 +146,7 @@ rl.EndDrawing()
 import slug_k2 "libs:slug/backends/karl2d"
 import k2 "karl2d:karl2d"
 
-renderer := new(slug_k2.Renderer)
-slug_k2.init(renderer, k2.draw_current_batch)  // call after k2.init()
+renderer := slug_k2.init(k2.draw_current_batch)  // call after k2.init()
 ctx := slug_k2.ctx(renderer)
 
 // In render loop:
@@ -163,8 +161,7 @@ slug_k2.flush(renderer, width, height)
 import slug_sokol "libs:slug/backends/sokol"
 import sg "sokol:gfx"
 
-renderer := new(slug_sokol.Renderer)
-slug_sokol.init(renderer)  // call after sg.setup()
+renderer := slug_sokol.init()  // call after sg.setup()
 ctx := slug_sokol.ctx(renderer)
 
 // In render loop:
@@ -182,8 +179,7 @@ sg.commit()
 import slug_d3d "libs:slug/backends/d3d11"
 import d3d11 "vendor:directx/d3d11"
 
-renderer := new(slug_d3d.Renderer)
-slug_d3d.init(renderer, device, device_context)  // caller-owned device
+renderer := slug_d3d.init(device, device_context)  // caller-owned device
 ctx := slug_d3d.ctx(renderer)
 slug_d3d.load_font(renderer, 0, "myfont.ttf")
 
@@ -197,18 +193,20 @@ slug_d3d.flush(renderer, width, height, rtv)  // caller-owned render target
 **Vulkan** and **SDL3 GPU** -- own their frame lifecycle:
 ```odin
 // Vulkan:
+ctx := slug_vk.ctx(renderer)
 slug_vk.begin_frame(renderer)
-slug.begin(&renderer.ctx)
+slug.begin(ctx)
 // ... draw calls ...
-slug.end(&renderer.ctx)
+slug.end(ctx)
 slug_vk.flush(renderer)
 slug_vk.present_frame(renderer)
 
 // SDL3 GPU:
+ctx := slug_sdl3.ctx(renderer)
 slug_sdl3.begin_frame(renderer)
-slug.begin(&renderer.ctx)
+slug.begin(ctx)
 // ... draw calls ...
-slug.end(&renderer.ctx)
+slug.end(ctx)
 slug_sdl3.flush(renderer)
 slug_sdl3.present_frame(renderer)
 ```
@@ -408,16 +406,15 @@ Every backend exposes this common API surface:
 
 | Proc | Purpose |
 |------|---------|
-| `init(renderer, ...)` | Create shaders, pipelines, buffers |
+| `init(...) -> ^Renderer` | Create renderer, shaders, pipelines, buffers (nil on failure) |
+| `ctx(renderer) -> ^slug.Context` | Get the slug context for draw calls |
 | `load_font(renderer, slot, path)` | Load font + upload textures (all-in-one) |
 | `load_fonts_shared(renderer, paths)` | Load multiple fonts into shared atlas |
 | `upload_font_textures(renderer, slot, pack)` | Upload pre-packed textures (advanced) |
 | `upload_shared_textures(renderer, pack)` | Upload shared atlas textures (advanced) |
 | `unload_font(renderer, slot)` | Free GPU textures + CPU data |
 | `flush(renderer, width, height, scissor?)` | Upload vertices and issue draw calls |
-| `destroy(renderer)` | Release all GPU resources |
-
-The Raylib, Karl2D, and Sokol backends also provide `ctx(renderer) -> ^slug.Context`.
+| `destroy(renderer)` | Release all GPU resources and free renderer |
 
 The Vulkan and SDL3 GPU backends additionally provide `begin_frame`, `present_frame`, and `use_font` since they manage their own frame lifecycle.
 

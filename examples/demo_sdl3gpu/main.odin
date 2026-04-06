@@ -270,16 +270,14 @@ main :: proc() {
 		return
 	}
 
-	renderer := new(slug_sdl3.Renderer)
-	defer free(renderer)
-
-	if !slug_sdl3.init(renderer, window, device) {
+	renderer := slug_sdl3.init(window, device)
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize SDL3 GPU renderer")
 		return
 	}
 	defer slug_sdl3.destroy(renderer)
 
-	ctx := &renderer.ctx
+	ctx := slug_sdl3.ctx(renderer)
 
 	// -----------------------------------------------
 	// 3. Load fonts + SVG icons into shared atlas

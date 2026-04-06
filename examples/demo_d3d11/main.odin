@@ -390,10 +390,8 @@ main :: proc() {
 	// 3. Initialize slug renderer
 	// -----------------------------------------------
 
-	renderer := new(slug_d3d.Renderer)
-	defer free(renderer)
-
-	if !slug_d3d.init(renderer, device, dc) {
+	renderer := slug_d3d.init(device, dc)
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize D3D11 slug renderer")
 		return
 	}

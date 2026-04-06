@@ -334,5 +334,5 @@ read_u32_be :: proc(data: []u8, offset: int) -> u32 {
 
 @(private = "file")
 read_i16_be :: proc(data: []u8, offset: int) -> i16 {
-	return transmute(i16)read_u16_be(data, offset)
+	return cast(i16)read_u16_be(data, offset)
 }

@@ -384,10 +384,13 @@ float4 ps_main(PS_INPUT input) : SV_Target {
 // Initialization
 // ===================================================
 
-// Initialize the D3D11 renderer. The device and device context are NOT owned
-// by this renderer — the caller is responsible for their lifetime.
-// Returns false if shader compilation or resource creation fails.
-init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) -> bool {
+// Create and initialize the D3D11 renderer. The device and device context are NOT
+// owned by this renderer — the caller is responsible for their lifetime.
+// Returns nil if shader compilation or resource creation fails.
+// Caller must call destroy() to free.
+init :: proc(device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) -> ^Renderer {
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
 	r.device = device
 	r.dc = dc
 
@@ -404,7 +407,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		&slug_vs_blob, &slug_vs_err,
 	)
 	if slug_vs_err != nil do slug_vs_err->Release()
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 	defer slug_vs_blob->Release()
 
 	hr = device->CreateVertexShader(
@@ -413,7 +416,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		nil,
 		&r.slug_vs,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// Slug input layout: 5x float4
 	slug_elems := [5]d3d11.INPUT_ELEMENT_DESC{
@@ -430,7 +433,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		slug_vs_blob->GetBufferSize(),
 		&r.slug_layout,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	slug_ps_blob: ^d3d11.IBlob
 	slug_ps_err: ^d3d11.IBlob
@@ -444,7 +447,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		&slug_ps_blob, &slug_ps_err,
 	)
 	if slug_ps_err != nil do slug_ps_err->Release()
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 	defer slug_ps_blob->Release()
 
 	hr = device->CreatePixelShader(
@@ -453,7 +456,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		nil,
 		&r.slug_ps,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// --- Slug buffers ---
 	// Constant buffer
@@ -464,7 +467,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		CPUAccessFlags = {.WRITE},
 	}
 	hr = device->CreateBuffer(&slug_cb_desc, nil, &r.slug_cb)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// Vertex buffer (dynamic)
 	slug_vb_desc := d3d11.BUFFER_DESC{
@@ -474,7 +477,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		CPUAccessFlags = {.WRITE},
 	}
 	hr = device->CreateBuffer(&slug_vb_desc, nil, &r.slug_vb)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// Index buffer (static quad pattern)
 	indices: [slug.MAX_GLYPH_INDICES]u32
@@ -497,7 +500,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		pSysMem = &indices[0],
 	}
 	hr = device->CreateBuffer(&slug_ib_desc, &slug_ib_data, &r.slug_ib)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// --- Rect shaders ---
 	rect_vs_blob: ^d3d11.IBlob
@@ -512,7 +515,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		&rect_vs_blob, &rect_vs_err,
 	)
 	if rect_vs_err != nil do rect_vs_err->Release()
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 	defer rect_vs_blob->Release()
 
 	hr = device->CreateVertexShader(
@@ -521,7 +524,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		nil,
 		&r.rect_vs,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// Rect input layout: float2 pos + float4 col
 	rect_elems := [2]d3d11.INPUT_ELEMENT_DESC{
@@ -535,7 +538,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		rect_vs_blob->GetBufferSize(),
 		&r.rect_layout,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	rect_ps_blob: ^d3d11.IBlob
 	rect_ps_err: ^d3d11.IBlob
@@ -549,7 +552,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		&rect_ps_blob, &rect_ps_err,
 	)
 	if rect_ps_err != nil do rect_ps_err->Release()
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 	defer rect_ps_blob->Release()
 
 	hr = device->CreatePixelShader(
@@ -558,7 +561,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		nil,
 		&r.rect_ps,
 	)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// --- Rect buffers ---
 	rect_cb_desc := d3d11.BUFFER_DESC{
@@ -568,7 +571,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		CPUAccessFlags = {.WRITE},
 	}
 	hr = device->CreateBuffer(&rect_cb_desc, nil, &r.rect_cb)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	rect_vb_desc := d3d11.BUFFER_DESC{
 		ByteWidth = u32(slug.MAX_RECTS * slug.VERTICES_PER_QUAD * RECT_VERTEX_SIZE),
@@ -577,7 +580,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		CPUAccessFlags = {.WRITE},
 	}
 	hr = device->CreateBuffer(&rect_vb_desc, nil, &r.rect_vb)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	rect_indices: [slug.MAX_RECTS * slug.INDICES_PER_QUAD]u32
 	for q in 0 ..< slug.MAX_RECTS {
@@ -599,7 +602,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		pSysMem = &rect_indices[0],
 	}
 	hr = device->CreateBuffer(&rect_ib_desc, &rect_ib_data, &r.rect_ib)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// --- Blend state: SrcAlpha / OneMinusSrcAlpha ---
 	blend_desc := d3d11.BLEND_DESC{}
@@ -614,7 +617,7 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		RenderTargetWriteMask = u8(d3d11.COLOR_WRITE_ENABLE_ALL),
 	}
 	hr = device->CreateBlendState(&blend_desc, &r.blend_state)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	// --- Rasterizer states ---
 	raster_desc := d3d11.RASTERIZER_DESC{
@@ -623,13 +626,13 @@ init :: proc(r: ^Renderer, device: ^d3d11.IDevice, dc: ^d3d11.IDeviceContext) ->
 		DepthClipEnable = true,
 	}
 	hr = device->CreateRasterizerState(&raster_desc, &r.raster_state)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
 	raster_desc.ScissorEnable = true
 	hr = device->CreateRasterizerState(&raster_desc, &r.raster_state_scissor)
-	if hr < 0 do return false
+	if hr < 0 { destroy(r); return nil }
 
-	return true
+	return r
 }
 
 // Return a pointer to the slug context for draw calls (slug.begin, slug.draw_text, etc).
@@ -858,9 +861,10 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 	slug.unload_font(&r.ctx, slot)
 }
 
-// Destroy all D3D11 resources and free the slug context.
+// Destroy all D3D11 resources, free the slug context, and free the renderer.
 // Does NOT release the device or device context (caller-owned).
 destroy :: proc(r: ^Renderer) {
+	if r == nil do return
 	// Per-font textures
 	for fi in 0 ..< slug.MAX_FONT_SLOTS {
 		release_font_d3d(&r.font_d3d[fi])
@@ -890,7 +894,7 @@ destroy :: proc(r: ^Renderer) {
 
 	// Destroy slug context
 	slug.destroy(&r.ctx)
-	r^ = {}
+	free(r)
 }
 
 // ===================================================

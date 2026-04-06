@@ -96,10 +96,13 @@ FRAG_SHADER_CODE :: #load("../../shaders/slug_sdl3_frag.spv")
 RECT_VERT_SHADER_CODE :: #load("../../shaders/rect_sdl3_vert.spv")
 RECT_FRAG_SHADER_CODE :: #load("../../shaders/rect_frag.spv")
 
-// Initialize the SDL3 GPU renderer.
+// Create and initialize the SDL3 GPU renderer.
 // The caller owns the device — init does NOT create or destroy it.
 // Call after sdl.ClaimWindowForGPUDevice.
-init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool {
+// Returns nil if any setup step fails. Caller must call destroy() to free.
+init :: proc(window: ^sdl.Window, device: ^sdl.GPUDevice) -> ^Renderer {
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
 	r.device = device
 	r.window = window
 
@@ -114,7 +117,7 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		stage               = .VERTEX,
 		num_uniform_buffers = 1,
 	})
-	if slug_vert == nil do return false
+	if slug_vert == nil { free(r); return nil }
 
 	slug_frag := sdl.CreateGPUShader(device, sdl.GPUShaderCreateInfo{
 		code_size           = len(FRAG_SHADER_CODE),
@@ -127,7 +130,8 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 	})
 	if slug_frag == nil {
 		sdl.ReleaseGPUShader(device, slug_vert)
-		return false
+		free(r)
+		return nil
 	}
 
 	rect_vert := sdl.CreateGPUShader(device, sdl.GPUShaderCreateInfo{
@@ -141,7 +145,8 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 	if rect_vert == nil {
 		sdl.ReleaseGPUShader(device, slug_frag)
 		sdl.ReleaseGPUShader(device, slug_vert)
-		return false
+		free(r)
+		return nil
 	}
 
 	rect_frag := sdl.CreateGPUShader(device, sdl.GPUShaderCreateInfo{
@@ -155,7 +160,8 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		sdl.ReleaseGPUShader(device, rect_vert)
 		sdl.ReleaseGPUShader(device, slug_frag)
 		sdl.ReleaseGPUShader(device, slug_vert)
-		return false
+		free(r)
+		return nil
 	}
 
 	// --- Blend state (standard alpha blending) ---
@@ -213,7 +219,8 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		sdl.ReleaseGPUShader(device, rect_vert)
 		sdl.ReleaseGPUShader(device, slug_frag)
 		sdl.ReleaseGPUShader(device, slug_vert)
-		return false
+		free(r)
+		return nil
 	}
 
 	// --- Rect pipeline (vec2 pos + vec4 col, stride 24 bytes) ---
@@ -248,12 +255,12 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		},
 	})
 	if r.rect_pipeline == nil {
-		sdl.ReleaseGPUGraphicsPipeline(device, r.slug_pipeline)
 		sdl.ReleaseGPUShader(device, rect_frag)
 		sdl.ReleaseGPUShader(device, rect_vert)
 		sdl.ReleaseGPUShader(device, slug_frag)
 		sdl.ReleaseGPUShader(device, slug_vert)
-		return false
+		destroy(r)
+		return nil
 	}
 
 	// Shaders are baked into the pipelines — safe to release
@@ -271,7 +278,7 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		address_mode_v = .CLAMP_TO_EDGE,
 		address_mode_w = .CLAMP_TO_EDGE,
 	})
-	if r.sampler == nil do return false
+	if r.sampler == nil { destroy(r); return nil }
 
 	// --- GPU buffers ---
 
@@ -280,46 +287,51 @@ init :: proc(r: ^Renderer, window: ^sdl.Window, device: ^sdl.GPUDevice) -> bool 
 		usage = {.VERTEX},
 		size  = u32(slug.MAX_GLYPH_VERTICES * size_of(slug.Vertex)),
 	})
-	if r.vertex_buffer == nil do return false
+	if r.vertex_buffer == nil { destroy(r); return nil }
 
 	// Slug index buffer (static, uploaded once)
 	r.index_buffer = sdl.CreateGPUBuffer(device, sdl.GPUBufferCreateInfo{
 		usage = {.INDEX},
 		size  = u32(slug.MAX_GLYPH_INDICES * size_of(u32)),
 	})
-	if r.index_buffer == nil do return false
+	if r.index_buffer == nil { destroy(r); return nil }
 
 	// Rect vertex buffer
 	r.rect_vb = sdl.CreateGPUBuffer(device, sdl.GPUBufferCreateInfo{
 		usage = {.VERTEX},
 		size  = u32(slug.MAX_RECTS * slug.VERTICES_PER_QUAD * size_of(slug.Rect_Vertex)),
 	})
-	if r.rect_vb == nil do return false
+	if r.rect_vb == nil { destroy(r); return nil }
 
 	// Rect index buffer (static, uploaded once)
 	r.rect_ib = sdl.CreateGPUBuffer(device, sdl.GPUBufferCreateInfo{
 		usage = {.INDEX},
 		size  = u32(slug.MAX_RECTS * slug.INDICES_PER_QUAD * size_of(u32)),
 	})
-	if r.rect_ib == nil do return false
+	if r.rect_ib == nil { destroy(r); return nil }
 
 	// --- Transfer buffers (CPU-visible staging, reused each frame) ---
 	r.transfer_buffer = sdl.CreateGPUTransferBuffer(device, sdl.GPUTransferBufferCreateInfo{
 		usage = .UPLOAD,
 		size  = u32(slug.MAX_GLYPH_VERTICES * size_of(slug.Vertex)),
 	})
-	if r.transfer_buffer == nil do return false
+	if r.transfer_buffer == nil { destroy(r); return nil }
 
 	r.rect_transfer = sdl.CreateGPUTransferBuffer(device, sdl.GPUTransferBufferCreateInfo{
 		usage = .UPLOAD,
 		size  = u32(slug.MAX_RECTS * slug.VERTICES_PER_QUAD * size_of(slug.Rect_Vertex)),
 	})
-	if r.rect_transfer == nil do return false
+	if r.rect_transfer == nil { destroy(r); return nil }
 
 	// --- Upload static index buffers ---
-	if !upload_static_indices(r) do return false
+	if !upload_static_indices(r) { destroy(r); return nil }
 
-	return true
+	return r
+}
+
+// Return a pointer to the slug context for draw calls.
+ctx :: proc(r: ^Renderer) -> ^slug.Context {
+	return &r.ctx
 }
 
 // Unload a font from a slot, releasing GPU textures and CPU glyph data.
@@ -336,8 +348,9 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 	slug.unload_font(&r.ctx, slot)
 }
 
-// Release all GPU resources. Does NOT destroy the device — caller owns it.
+// Release all GPU resources and free the renderer. Does NOT destroy the device.
 destroy :: proc(r: ^Renderer) {
+	if r == nil do return
 	_ = sdl.WaitForGPUIdle(r.device)
 
 	// Font textures
@@ -365,7 +378,7 @@ destroy :: proc(r: ^Renderer) {
 	sdl.ReleaseWindowFromGPUDevice(r.device, r.window)
 
 	slug.destroy(&r.ctx)
-	r^ = {}
+	free(r)
 }
 
 // Load a TTF font file, process it, and upload textures to the GPU.

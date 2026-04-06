@@ -16,8 +16,8 @@ package slug_raylib
 //
 // Usage:
 //   1. Call rl.InitWindow() first (creates the GL context)
-//   2. renderer := new(slug_raylib.Renderer)
-//   3. slug_raylib.init(renderer)
+//   2. renderer := slug_raylib.init() // returns nil on failure
+//   3. defer slug_raylib.destroy(renderer)
 //   4. slug_raylib.load_font(renderer, 0, "myfont.ttf")
 //   5. Per frame:
 //        slug.begin(slug_raylib.ctx(renderer))
@@ -38,8 +38,7 @@ import slug "../../"
 import slug_gl "../opengl"
 
 // --- Renderer ---
-// Wraps the OpenGL renderer. Heap-allocate with new() —
-// slug.Context is ~1.5MB, too large for the stack.
+// Wraps the OpenGL renderer. Created by init(), freed by destroy().
 
 Renderer :: struct {
 	using gl_renderer: slug_gl.Renderer,
@@ -47,22 +46,29 @@ Renderer :: struct {
 
 // --- Public API ---
 
-// Initialize the slug renderer. Call AFTER rl.InitWindow().
+// Create and initialize the slug renderer. Call AFTER rl.InitWindow().
 // Loads Odin's vendor:OpenGL function pointers from the
 // already-active GL context, then sets up the slug shader,
 // VAO, VBO, and EBO.
-// Returns false if GL function pointers couldn't be loaded
+// Returns nil if GL function pointers couldn't be loaded
 // (usually means rl.InitWindow() wasn't called first).
-init :: proc(r: ^Renderer) -> bool {
+// Caller must call destroy() to free.
+init :: proc() -> ^Renderer {
 	gl.load_up_to(3, 3, gl_set_proc_address)
 
 	// Verify GL is actually available — if InitWindow() wasn't called,
 	// all function pointers will be nil and slug_gl.init will segfault.
 	if gl.CreateShader == nil {
-		return false
+		return nil
 	}
 
-	return slug_gl.init(&r.gl_renderer)
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
+	if !slug_gl.init_renderer(&r.gl_renderer) {
+		free(r)
+		return nil
+	}
+	return r
 }
 
 // Return a pointer to the slug context for draw calls.
@@ -110,9 +116,11 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 	slug_gl.unload_font(&r.gl_renderer, slot)
 }
 
-// Destroy all GL resources and free the slug context.
+// Destroy all GL resources, free the slug context, and free the renderer.
 destroy :: proc(r: ^Renderer) {
-	slug_gl.destroy(&r.gl_renderer)
+	if r == nil do return
+	slug_gl.destroy_renderer(&r.gl_renderer)
+	free(r)
 }
 
 // Re-populate vendor:OpenGL function pointers after a hot reload.

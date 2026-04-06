@@ -246,10 +246,8 @@ main :: proc() {
 	// 2. Initialize slug renderer
 	// -----------------------------------------------
 
-	renderer := new(slug_k2.Renderer)
-	defer free(renderer)
-
-	if !slug_k2.init(renderer, k2.draw_current_batch) {
+	renderer := slug_k2.init(k2.draw_current_batch)
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize Karl2D slug renderer")
 		return
 	}

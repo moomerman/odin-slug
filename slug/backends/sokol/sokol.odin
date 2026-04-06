@@ -77,7 +77,7 @@ Rect_Vs_Params :: struct {
 }
 
 // --- Renderer state ---
-// Heap-allocate with new() — slug.Context is ~1.5MB, too large for the stack.
+// Created by init(), freed by destroy().
 
 Renderer :: struct {
 	ctx:         slug.Context,
@@ -359,10 +359,13 @@ void main() { fragColor = vColor; }
 // ===================================================
 // Initialization
 // Call AFTER sg.setup() has initialized the Sokol GFX context.
-// Returns false if shader or pipeline creation fails.
+// Returns nil if shader or pipeline creation fails.
+// Caller must call destroy() to free.
 // ===================================================
 
-init :: proc(r: ^Renderer) -> bool {
+init :: proc() -> ^Renderer {
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
 	// --- Slug text shader ---
 	r.slug_shader = sg.make_shader({
 		vertex_func = {
@@ -543,7 +546,7 @@ init :: proc(r: ^Renderer) -> bool {
 		data  = {ptr = &rect_indices, size = size_of(rect_indices)},
 	})
 
-	return true
+	return r
 }
 
 // Return a pointer to the slug context for draw calls.
@@ -721,8 +724,9 @@ flush :: proc(r: ^Renderer, width, height: i32, scissor: slug.Scissor_Rect = {})
 // Shutdown — release all Sokol GFX resources
 // ===================================================
 
-// Destroy all Sokol GFX resources and free the slug context.
+// Destroy all Sokol GFX resources, free the slug context, and free the renderer.
 destroy :: proc(r: ^Renderer) {
+	if r == nil do return
 	// Delete shared atlas
 	if r.shared_sg.loaded {
 		destroy_font_sg(&r.shared_sg)
@@ -750,7 +754,7 @@ destroy :: proc(r: ^Renderer) {
 	// Destroy slug context (frees fonts and glyph data)
 	slug.destroy(&r.ctx)
 
-	r^ = {}
+	free(r)
 }
 
 // ===================================================

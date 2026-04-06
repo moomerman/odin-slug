@@ -327,11 +327,23 @@ RECT_VERTEX_SIZE :: size_of(slug.Rect_Vertex) // 24 bytes (vec2 + vec4)
 // Initialization
 // ===================================================
 
-// Initialize the OpenGL renderer: compile shaders, create VAO/VBO/IBO
+// Create and initialize an OpenGL renderer: compile shaders, create VAO/VBO/IBO
 // for both the Slug text pipeline and the flat-color rect pipeline.
-// Call after an OpenGL 3.3+ context is active. Returns false if
-// shader compilation or linking fails.
-init :: proc(r: ^Renderer) -> bool {
+// Call after an OpenGL 3.3+ context is active. Returns nil if
+// shader compilation or linking fails. Caller must call destroy() to free.
+init :: proc() -> ^Renderer {
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
+	if !init_renderer(r) {
+		free(r)
+		return nil
+	}
+	return r
+}
+
+// Initialize GL resources on an already-allocated Renderer.
+// Used internally by backends that embed slug_gl.Renderer (Raylib, Karl2D).
+init_renderer :: proc(r: ^Renderer) -> bool {
 	// Compile and link shader program
 	program, program_ok := gl.load_shaders_source(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE)
 	if !program_ok do return false
@@ -442,6 +454,11 @@ init :: proc(r: ^Renderer) -> bool {
 
 	gl.BindVertexArray(0)
 	return true
+}
+
+// Return a pointer to the slug context for draw calls.
+ctx :: proc(r: ^Renderer) -> ^slug.Context {
+	return &r.ctx
 }
 
 // ===================================================
@@ -743,7 +760,16 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 // Shutdown — release all GL resources and slug context
 // ===================================================
 
+// Release all GL resources and slug context, then free the renderer.
 destroy :: proc(r: ^Renderer) {
+	if r == nil do return
+	destroy_renderer(r)
+	free(r)
+}
+
+// Release all GL resources and slug context without freeing the struct.
+// Used internally by backends that embed slug_gl.Renderer (Raylib, Karl2D).
+destroy_renderer :: proc(r: ^Renderer) {
 	// Delete shared atlas textures
 	if r.shared_gl.loaded {
 		gl.DeleteTextures(1, &r.shared_gl.curve_texture)
@@ -775,6 +801,4 @@ destroy :: proc(r: ^Renderer) {
 
 	// Destroy slug context (frees fonts and glyph data)
 	slug.destroy(&r.ctx)
-
-	r^ = {}
 }

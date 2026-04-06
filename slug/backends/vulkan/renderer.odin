@@ -127,56 +127,64 @@ FRAG_SHADER_CODE :: #load("slug_frag.spv")
 RECT_VERT_SHADER_CODE :: #load("rect_vert.spv")
 RECT_FRAG_SHADER_CODE :: #load("rect_frag.spv")
 
-// Initialize the Vulkan renderer: create instance, device, swapchain, pipelines,
-// and all GPU buffers. The caller owns the SDL window — init does NOT create it.
-// Call after sdl.CreateWindow with the .VULKAN flag.
-// Returns false if any Vulkan setup step fails.
-init :: proc(r: ^Renderer, window: ^sdl.Window) -> bool {
+// Create and initialize the Vulkan renderer: create instance, device, swapchain,
+// pipelines, and all GPU buffers. The caller owns the SDL window — init does NOT
+// create it. Call after sdl.CreateWindow with the .VULKAN flag.
+// Returns nil if any Vulkan setup step fails. Caller must call destroy() to free.
+init :: proc(window: ^sdl.Window) -> ^Renderer {
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
 	r.window = window
 
 	// Load Vulkan via SDL3
 	if !sdl.Vulkan_LoadLibrary(nil) {
-		return false
+		free(r)
+		return nil
 	}
 
 	get_instance_proc := sdl.Vulkan_GetVkGetInstanceProcAddr()
 	if get_instance_proc == nil {
-		return false
+		free(r)
+		return nil
 	}
 
 	vk.load_proc_addresses_global(rawptr(get_instance_proc))
 
-	if !create_instance(r) do return false
-	vk.load_proc_addresses_instance(r.instance)
+	ok := create_instance(r)
+	if ok do vk.load_proc_addresses_instance(r.instance)
 
 	when ENABLE_VALIDATION {
-		setup_debug_messenger(r)
+		if ok do setup_debug_messenger(r)
 	}
 
-	// Create surface via SDL3
-	if !sdl.Vulkan_CreateSurface(window, r.instance, nil, &r.surface) {
-		return false
+	if ok do ok = sdl.Vulkan_CreateSurface(window, r.instance, nil, &r.surface)
+	if ok do ok = pick_physical_device(r)
+	if ok do ok = create_logical_device(r)
+	if ok do vk.load_proc_addresses_device(r.device)
+	if ok do ok = create_swapchain(r, window)
+	if ok do ok = create_image_views(r)
+	if ok do ok = create_command_pool(r)
+	if ok do ok = create_render_pass(r)
+	if ok do ok = create_framebuffers(r)
+	if ok do ok = create_descriptor_set_layout(r)
+	if ok do ok = create_descriptor_pool(r)
+	if ok do ok = create_slug_pipeline(r)
+	if ok do ok = create_command_buffers(r)
+	if ok do ok = create_sync_objects(r)
+	if ok do ok = create_vertex_index_buffers(r)
+	if ok do ok = create_rect_pipeline(r)
+	if ok do ok = create_rect_buffers(r)
+
+	if !ok {
+		destroy(r)
+		return nil
 	}
+	return r
+}
 
-	if !pick_physical_device(r) do return false
-	if !create_logical_device(r) do return false
-	vk.load_proc_addresses_device(r.device)
-
-	if !create_swapchain(r, window) do return false
-	if !create_image_views(r) do return false
-	if !create_command_pool(r) do return false
-	if !create_render_pass(r) do return false
-	if !create_framebuffers(r) do return false
-	if !create_descriptor_set_layout(r) do return false
-	if !create_descriptor_pool(r) do return false
-	if !create_slug_pipeline(r) do return false
-	if !create_command_buffers(r) do return false
-	if !create_sync_objects(r) do return false
-	if !create_vertex_index_buffers(r) do return false
-	if !create_rect_pipeline(r) do return false
-	if !create_rect_buffers(r) do return false
-
-	return true
+// Return a pointer to the slug context for draw calls.
+ctx :: proc(r: ^Renderer) -> ^slug.Context {
+	return &r.ctx
 }
 
 // Unload a font from a slot, releasing GPU textures and CPU glyph data.
@@ -194,9 +202,10 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 	slug.unload_font(&r.ctx, slot)
 }
 
-// Release all Vulkan resources (pipelines, buffers, textures, device, instance)
-// and free the slug context. Does NOT destroy the SDL window — caller owns it.
+// Release all Vulkan resources (pipelines, buffers, textures, device, instance),
+// free the slug context, and free the renderer. Does NOT destroy the SDL window.
 destroy :: proc(r: ^Renderer) {
+	if r == nil do return
 	if r.device != nil {
 		vk.DeviceWaitIdle(r.device)
 	}
@@ -284,6 +293,8 @@ destroy :: proc(r: ^Renderer) {
 
 	// Destroy CPU-side font data
 	slug.destroy(&r.ctx)
+
+	free(r)
 }
 
 // Load a TTF font file, process it, and upload textures to the GPU.

@@ -45,7 +45,7 @@ import slug_gl "../opengl"
 
 // --- Renderer ---
 // Wraps the OpenGL renderer plus a Karl2D batch flush callback.
-// Heap-allocate with new() — slug.Context is ~1.5MB, too large for the stack.
+// Created by init(), freed by destroy().
 
 Renderer :: struct {
 	using gl_renderer: slug_gl.Renderer,
@@ -54,23 +54,29 @@ Renderer :: struct {
 
 // --- Public API ---
 
-// Initialize the slug renderer. Call AFTER k2.init().
+// Create and initialize the slug renderer. Call AFTER k2.init().
 // flush_batch_proc should be k2.draw_current_batch — it flushes
 // Karl2D's internal vertex batch before slug issues GL draw calls.
-// Returns false if GL function pointers couldn't be loaded
+// Returns nil if GL function pointers couldn't be loaded
 // (usually means k2.init() wasn't called first).
-init :: proc(r: ^Renderer, flush_batch_proc: proc()) -> bool {
-	r.flush_batch = flush_batch_proc
-
+// Caller must call destroy() to free.
+init :: proc(flush_batch_proc: proc()) -> ^Renderer {
 	gl.load_up_to(3, 3, gl_set_proc_address)
 
 	// Verify GL is actually available — if k2.init() wasn't called,
 	// all function pointers will be nil and slug_gl.init will segfault.
 	if gl.CreateShader == nil {
-		return false
+		return nil
 	}
 
-	return slug_gl.init(&r.gl_renderer)
+	r, alloc_err := new(Renderer)
+	if alloc_err != .None do return nil
+	r.flush_batch = flush_batch_proc
+	if !slug_gl.init_renderer(&r.gl_renderer) {
+		free(r)
+		return nil
+	}
+	return r
 }
 
 // Return a pointer to the slug context for draw calls.
@@ -120,9 +126,11 @@ unload_font :: proc(r: ^Renderer, slot: int) {
 	slug_gl.unload_font(&r.gl_renderer, slot)
 }
 
-// Destroy all GL resources and free the slug context.
+// Destroy all GL resources, free the slug context, and free the renderer.
 destroy :: proc(r: ^Renderer) {
-	slug_gl.destroy(&r.gl_renderer)
+	if r == nil do return
+	slug_gl.destroy_renderer(&r.gl_renderer)
+	free(r)
 }
 
 // --- GL proc loader ---

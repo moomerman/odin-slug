@@ -334,8 +334,8 @@ init_cb :: proc "c" () {
 	}
 
 	// Initialize slug renderer
-	state.renderer = new(slug_sokol.Renderer)
-	if !slug_sokol.init(state.renderer) {
+	state.renderer = slug_sokol.init()
+	if state.renderer == nil {
 		fmt.eprintln("Failed to initialize slug Sokol renderer")
 		return
 	}
@@ -797,7 +797,6 @@ cleanup_cb :: proc "c" () {
 	context = runtime.default_context()
 	slug.cache_destroy(&state.cached_label)
 	slug_sokol.destroy(state.renderer)
-	free(state.renderer)
 	sg.shutdown()
 }
 

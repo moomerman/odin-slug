@@ -275,17 +275,14 @@ main :: proc() {
 	// 2. Initialize slug renderer
 	// -----------------------------------------------
 
-	renderer := new(slug_gl.Renderer)
-	if !slug_gl.init(renderer) {
+	renderer := slug_gl.init()
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize slug GL renderer")
 		return
 	}
-	defer {
-		slug_gl.destroy(renderer)
-		free(renderer)
-	}
+	defer slug_gl.destroy(renderer)
 
-	ctx := &renderer.ctx
+	ctx := slug_gl.ctx(renderer)
 
 	// -----------------------------------------------
 	// 3. Load fonts + SVG icons into shared atlas

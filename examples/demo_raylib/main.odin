@@ -269,15 +269,12 @@ main :: proc() {
 	// function pointers automatically — no need to import
 	// vendor:OpenGL or vendor:glfw yourself.
 
-	renderer := new(slug_rl.Renderer)
-	if !slug_rl.init(renderer) {
+	renderer := slug_rl.init()
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize slug Raylib renderer")
 		return
 	}
-	defer {
-		slug_rl.destroy(renderer)
-		free(renderer)
-	}
+	defer slug_rl.destroy(renderer)
 
 	// -----------------------------------------------
 	// 3. Load fonts + SVG icons into shared atlas

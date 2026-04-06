@@ -256,16 +256,14 @@ main :: proc() {
 	// 2. Initialize the slug Vulkan renderer
 	// -----------------------------------------------
 
-	renderer := new(slug_vk.Renderer)
-	defer free(renderer)
-
-	if !slug_vk.init(renderer, window) {
+	renderer := slug_vk.init(window)
+	if renderer == nil {
 		fmt.eprintln("Failed to initialize Vulkan renderer")
 		return
 	}
 	defer slug_vk.destroy(renderer)
 
-	ctx := &renderer.ctx
+	ctx := slug_vk.ctx(renderer)
 
 	// -----------------------------------------------
 	// 3. Load fonts + SVG icons into shared atlas

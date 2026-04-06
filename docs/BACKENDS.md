@@ -28,10 +28,11 @@ which uploads vertices and issues draw calls in one shot. No GPU synchronization
 to think about.
 
 ```odin
-slug.begin(&renderer.ctx)           // or slug.begin(backend.ctx(renderer))
+ctx := backend.ctx(renderer)
+slug.begin(ctx)
 // ... draw calls ...
-slug.end(&renderer.ctx)
-backend.flush(&renderer, width, height)
+slug.end(ctx)
+backend.flush(renderer, width, height)
 ```
 
 For multi-flush (scissored passes), just repeat the cycle:
@@ -80,22 +81,17 @@ The caller does **not** call `slug.begin()` / `slug.end()` — the backend handl
 
 ## Context Access
 
-All backends store a `slug.Context` inside their `Renderer` struct. How you
-access it differs by backend complexity:
+All backends provide a `ctx(renderer) -> ^slug.Context` proc:
 
-| Backend | Access Pattern |
-|---------|---------------|
-| OpenGL | `&renderer.ctx` (direct field) |
-| Vulkan | `&renderer.ctx` (direct field) |
-| SDL3 GPU | `&renderer.ctx` (direct field) |
-| Raylib | `slug_raylib.ctx(&renderer)` (proc) |
-| Karl2D | `slug_karl2d.ctx(&renderer)` (proc) |
-| Sokol | `slug_sokol.ctx(&renderer)` (proc) |
+```odin
+ctx := backend.ctx(renderer)
+slug.begin(ctx)
+// ... draw calls ...
+slug.end(ctx)
+```
 
-The wrapper backends (Raylib, Karl2D, Sokol) use a `ctx()` proc because
-their `Renderer` wraps another struct and the field path isn't a simple
-`renderer.ctx`. Low-level backends expose the field directly — you're already
-managing GPU state, so one more direct field access is consistent with that level.
+This is uniform across all 7 backends — no need to remember which ones use
+a direct field vs a proc call.
 
 ## When to Use Each Backend
 
